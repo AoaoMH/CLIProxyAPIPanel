@@ -1,6 +1,5 @@
 <template>
   <PageContainer>
-    <!-- 直接显示内容，去掉页面标题 -->
     <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <!-- Action Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -8,8 +7,8 @@
         <div 
           class="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md border-book-cloth/30 dark:border-book-cloth/20"
         >
-          <div class="absolute inset-0 bg-gradient-to-br from-book-cloth/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div class="p-6">
+          <div class="absolute inset-0 bg-gradient-to-br from-book-cloth/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div class="p-6 relative">
             <div class="flex items-start justify-between">
               <div class="space-y-1">
                 <div class="p-2 w-fit rounded-lg bg-book-cloth/10 text-book-cloth mb-3">
@@ -23,7 +22,7 @@
             </div>
             <div class="mt-6">
               <Button 
-                @click="createBackup" 
+                @click="openBackupDialog" 
                 :disabled="creatingBackup" 
                 class="w-full sm:w-auto bg-book-cloth hover:bg-book-cloth/90 text-white shadow-sm"
               >
@@ -39,8 +38,8 @@
         <div 
           class="group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md border-kraft/40 dark:border-kraft/30"
         >
-          <div class="absolute inset-0 bg-gradient-to-br from-kraft/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div class="p-6">
+          <div class="absolute inset-0 bg-gradient-to-br from-kraft/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div class="p-6 relative">
             <div class="flex items-start justify-between">
               <div class="space-y-1">
                 <div class="p-2 w-fit rounded-lg bg-kraft/20 text-orange-700 dark:text-orange-400 mb-3">
@@ -56,7 +55,7 @@
               <input
                 ref="restoreInput"
                 type="file"
-                accept=".json,.yaml,.yml"
+                accept=".zip"
                 class="hidden"
                 @change="handleRestore"
               />
@@ -156,16 +155,75 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Backup Dialog -->
+    <Dialog v-model:open="backupDialogOpen" size="md" title="创建备份" :icon="Download">
+      <div class="space-y-4">
+        <!-- Backup Name -->
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-foreground">备份名称（可选）</label>
+          <input
+            v-model="backupForm.name"
+            type="text"
+            placeholder="留空则自动生成"
+            class="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+
+        <!-- Backup Content -->
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-foreground">备份内容</label>
+          <div class="space-y-2">
+            <label class="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 cursor-pointer transition-colors">
+              <Checkbox v-model="backupForm.content.config" />
+              <div class="flex-1">
+                <div class="text-sm font-medium">配置文件</div>
+                <div class="text-xs text-muted-foreground">config.yaml - 服务器配置</div>
+              </div>
+              <Settings class="w-4 h-4 text-muted-foreground" />
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 cursor-pointer transition-colors">
+              <Checkbox v-model="backupForm.content.auths" />
+              <div class="flex-1">
+                <div class="text-sm font-medium">认证文件</div>
+                <div class="text-xs text-muted-foreground">auths/ - OAuth 凭证和 API 密钥</div>
+              </div>
+              <Key class="w-4 h-4 text-muted-foreground" />
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 cursor-pointer transition-colors">
+              <Checkbox v-model="backupForm.content.env" />
+              <div class="flex-1">
+                <div class="text-sm font-medium">环境变量</div>
+                <div class="text-xs text-muted-foreground">.env - 环境配置文件</div>
+              </div>
+              <FileText class="w-4 h-4 text-muted-foreground" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button @click="confirmCreateBackup" :disabled="creatingBackup || !hasSelectedContent">
+          <Loader2 v-if="creatingBackup" class="w-4 h-4 mr-2 animate-spin" />
+          <Download v-else class="w-4 h-4 mr-2" />
+          创建备份
+        </Button>
+        <Button variant="outline" @click="backupDialogOpen = false" :disabled="creatingBackup">
+          取消
+        </Button>
+      </template>
+    </Dialog>
   </PageContainer>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { apiClient } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import PageContainer from '@/components/layout/PageContainer.vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import Button from '@/components/ui/button.vue'
+import Checkbox from '@/components/ui/checkbox.vue'
+import { Dialog } from '@/components/ui/dialog'
 import {
   Download,
   Upload,
@@ -174,6 +232,9 @@ import {
   Loader2,
   Clock,
   Database,
+  Settings,
+  Key,
+  FileText,
 } from 'lucide-vue-next'
 import { formatDateTime } from '@/utils/format'
 
@@ -200,6 +261,20 @@ const creatingBackup = ref(false)
 const restoring = ref(false)
 const backups = ref<Backup[]>([])
 const restoreInput = ref<HTMLInputElement>()
+const backupDialogOpen = ref(false)
+
+const backupForm = reactive({
+  name: '',
+  content: {
+    config: true,
+    auths: true,
+    env: true
+  }
+})
+
+const hasSelectedContent = computed(() => {
+  return backupForm.content.config || backupForm.content.auths || backupForm.content.env
+})
 
 function formatDate(dateString: string): string {
   return formatDateTime(dateString) || dateString
@@ -223,14 +298,23 @@ async function fetchBackups() {
   }
 }
 
-async function createBackup() {
+function openBackupDialog() {
+  backupForm.name = ''
+  backupForm.content.config = true
+  backupForm.content.auths = true
+  backupForm.content.env = true
+  backupDialogOpen.value = true
+}
+
+async function confirmCreateBackup() {
   creatingBackup.value = true
   try {
-    // POST to /backups to create a new backup
     await apiClient.post('/backups', {
-      content: { config: true, auths: true }
+      name: backupForm.name || undefined,
+      content: backupForm.content
     })
     toast({ title: '备份已创建' })
+    backupDialogOpen.value = false
     await fetchBackups()
   } catch {
     toast({ title: '创建备份失败', variant: 'destructive' })
@@ -246,7 +330,6 @@ async function handleRestore(event: Event) {
 
   restoring.value = true
   try {
-    // Upload and restore using FormData
     const formData = new FormData()
     formData.append('file', file)
     formData.append('authsMode', 'overwrite')
@@ -263,7 +346,6 @@ async function handleRestore(event: Event) {
 
 async function downloadBackup(name: string) {
   try {
-    // Download backup file - use query param, not path param
     const response = await apiClient.getRaw(`/backups/download?name=${encodeURIComponent(name)}`, {
       responseType: 'blob'
     })
@@ -280,17 +362,16 @@ async function downloadBackup(name: string) {
 }
 
 async function deleteBackup(name: string) {
+  if (!window.confirm(`确定要删除备份 "${name}" 吗？`)) return
+  
   try {
-    // Delete backup - use query param, not path param
-    await apiClient.delete(`/backups?name=${encodeURIComponent(name)}`)
+    await apiClient.delete(`/backups/${encodeURIComponent(name)}`)
     toast({ title: '备份已删除' })
     await fetchBackups()
   } catch {
     toast({ title: '删除备份失败', variant: 'destructive' })
   }
 }
-
-// Reset functionality is hidden - backend doesn't have /reset endpoint
 
 onMounted(fetchBackups)
 </script>
