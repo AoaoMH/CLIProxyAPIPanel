@@ -91,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
         managementKey: config.managementKey
       })
 
-      // 验证连接 - 尝试获取配置
+      // 验证连接 - 尝试获取配置（这会触发版本信息更新）
       await apiClient.get('/config')
 
       // 保存配置
@@ -139,6 +139,21 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
+  /**
+   * 刷新服务器版本信息
+   */
+  async function refreshServerInfo(): Promise<void> {
+    if (!isConnected.value) return
+    
+    try {
+      // 发起一个简单的请求来触发版本信息更新
+      await apiClient.get('/config')
+    } catch (error) {
+      // 忽略错误，版本信息不是关键功能
+      console.warn('Failed to refresh server info:', error)
+    }
+  }
+
   return {
     apiBase,
     managementKey,
@@ -151,6 +166,7 @@ export const useAuthStore = defineStore('auth', () => {
     init,
     connect,
     disconnect,
-    autoConnect
+    autoConnect,
+    refreshServerInfo
   }
 })
