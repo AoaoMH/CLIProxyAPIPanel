@@ -21,6 +21,7 @@ tls:
 streaming:
   keepalive-seconds: 30
   bootstrap-retries: 3
+nonstream-keepalive-interval: 15
 `
 
     loadVisualValuesFromYaml(yamlContent)
@@ -33,6 +34,7 @@ streaming:
     expect(visualValues.value.tlsKey).toBe('/path/to/key.pem')
     expect(visualValues.value.streaming.keepaliveSeconds).toBe('30')
     expect(visualValues.value.streaming.bootstrapRetries).toBe('3')
+    expect(visualValues.value.streaming.nonstreamKeepaliveInterval).toBe('15')
   })
 
   it('should load API key configurations from YAML', () => {
@@ -110,7 +112,8 @@ debug: false
       debug: true,
       streaming: {
         keepaliveSeconds: '60',
-        bootstrapRetries: '5'
+        bootstrapRetries: '5',
+        nonstreamKeepaliveInterval: '20'
       }
     })
 
@@ -122,6 +125,7 @@ debug: false
     expect(updatedYaml).toContain('debug: true')
     expect(updatedYaml).toContain('keepalive-seconds: 60')
     expect(updatedYaml).toContain('bootstrap-retries: 5')
+    expect(updatedYaml).toContain('nonstream-keepalive-interval: 20')
   })
 
   it('should handle OAuth excluded models configuration', () => {

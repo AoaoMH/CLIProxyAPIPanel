@@ -130,6 +130,7 @@ export type PayloadRule = {
 export interface StreamingConfig {
   keepaliveSeconds: string
   bootstrapRetries: string
+  nonstreamKeepaliveInterval: string
 }
 
 // Header entry for API key configurations
@@ -274,6 +275,7 @@ export const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   streaming: {
     keepaliveSeconds: '',
     bootstrapRetries: '',
+    nonstreamKeepaliveInterval: '',
   },
   geminiApiKeys: [],
   codexApiKeys: [],

@@ -34,6 +34,28 @@
           <p class="text-xs text-muted-foreground mt-1">流式传输启动时的重试次数</p>
         </div>
       </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-foreground mb-2">非流式 Keepalive 间隔 (秒)</label>
+          <div class="relative">
+            <Input
+              :model-value="values.streaming.nonstreamKeepaliveInterval"
+              type="number"
+              placeholder="0"
+              :disabled="disabled"
+              @update:model-value="updateStreamingValue('nonstreamKeepaliveInterval', $event)"
+            />
+            <span
+              v-if="isNonstreamKeepaliveDisabled"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
+            >
+              已禁用
+            </span>
+          </div>
+          <p class="text-xs text-muted-foreground mt-1">非流式响应时每隔 N 秒发送空行以防止空闲超时，设置为 0 或留空表示禁用</p>
+        </div>
+      </div>
     </div>
   </ConfigSection>
 </template>
@@ -65,6 +87,11 @@ const emit = defineEmits<Emits>()
 
 const isKeepaliveDisabled = computed(() => {
   const val = props.values.streaming.keepaliveSeconds
+  return val === '' || val === '0' || val === undefined
+})
+
+const isNonstreamKeepaliveDisabled = computed(() => {
+  const val = props.values.streaming.nonstreamKeepaliveInterval
   return val === '' || val === '0' || val === undefined
 })
 

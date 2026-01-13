@@ -54,6 +54,7 @@ const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   streaming: {
     keepaliveSeconds: '',
     bootstrapRetries: '',
+    nonstreamKeepaliveInterval: '',
   },
   geminiApiKeys: [],
   codexApiKeys: [],
@@ -145,6 +146,7 @@ export function useVisualConfig() {
         streaming: {
           keepaliveSeconds: String(parsed.streaming?.['keepalive-seconds'] ?? ''),
           bootstrapRetries: String(parsed.streaming?.['bootstrap-retries'] ?? ''),
+          nonstreamKeepaliveInterval: String(parsed['nonstream-keepalive-interval'] ?? ''),
         },
         
         // Gemini API 密钥配置 (Requirement 20.2)
@@ -246,6 +248,14 @@ export function useVisualConfig() {
         }
         if (values.streaming.bootstrapRetries) {
           parsed.streaming['bootstrap-retries'] = parseInt(values.streaming.bootstrapRetries, 10) || undefined
+        }
+      }
+
+      // Non-streaming keepalive interval (顶层配置)
+      if (values.streaming.nonstreamKeepaliveInterval) {
+        const interval = parseInt(values.streaming.nonstreamKeepaliveInterval, 10)
+        if (interval > 0) {
+          parsed['nonstream-keepalive-interval'] = interval
         }
       }
 
