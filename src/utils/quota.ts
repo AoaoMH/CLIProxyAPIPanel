@@ -55,6 +55,9 @@ export const TYPE_COLORS: Record<string, TypeColorSet> = {
 // API Configuration - matching reference implementation
 // =====================
 
+// Antigravity default project ID (fallback value)
+export const DEFAULT_ANTIGRAVITY_PROJECT_ID = 'bamboo-precept-lgxtn'
+
 // Antigravity API (POST method with fallback URLs)
 export const ANTIGRAVITY_QUOTA_URLS = [
   'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',

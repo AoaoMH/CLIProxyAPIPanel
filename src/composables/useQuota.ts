@@ -17,6 +17,7 @@ import type {
 } from '@/types'
 import { useQuotaStore } from '@/stores/quota'
 import { apiCallApi, getApiCallErrorMessage } from '@/api/apiCall'
+import { apiClient } from '@/api/client'
 import {
   ANTIGRAVITY_QUOTA_URLS,
   ANTIGRAVITY_REQUEST_HEADERS,
@@ -24,6 +25,7 @@ import {
   CODEX_REQUEST_HEADERS,
   GEMINI_CLI_QUOTA_URL,
   GEMINI_CLI_REQUEST_HEADERS,
+  DEFAULT_ANTIGRAVITY_PROJECT_ID,
   normalizeAuthIndexValue,
   normalizeQuotaFraction,
   normalizeNumberValue,
@@ -95,6 +97,57 @@ function parseGeminiCliQuotaPayload(payload: unknown): GeminiCliQuotaPayload | n
 function normalizePlanType(value: unknown): string | null {
   const normalized = normalizeStringValue(value)
   return normalized ? normalized.toLowerCase() : null
+}
+
+// =====================
+// Antigravity Project ID Resolution
+// =====================
+
+/**
+ * Download auth file content and extract project_id
+ */
+async function resolveAntigravityProjectId(file: AuthFileItem): Promise<string> {
+  try {
+    const response = await apiClient.getRaw(`/auth-files/download?name=${encodeURIComponent(file.name)}`, {
+      responseType: 'blob'
+    })
+    const blob = response.data as Blob
+    const text = await blob.text()
+    const trimmed = text.trim()
+    if (!trimmed) return DEFAULT_ANTIGRAVITY_PROJECT_ID
+
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>
+    const topLevel = normalizeStringValue(parsed.project_id ?? parsed.projectId)
+    if (topLevel) return topLevel
+
+    const installed =
+      parsed.installed && typeof parsed.installed === 'object' && parsed.installed !== null
+        ? (parsed.installed as Record<string, unknown>)
+        : null
+    const installedProjectId = installed
+      ? normalizeStringValue(installed.project_id ?? installed.projectId)
+      : null
+    if (installedProjectId) return installedProjectId
+
+    const web =
+      parsed.web && typeof parsed.web === 'object' && parsed.web !== null
+        ? (parsed.web as Record<string, unknown>)
+        : null
+    const webProjectId = web ? normalizeStringValue(web.project_id ?? web.projectId) : null
+    if (webProjectId) return webProjectId
+  } catch {
+    return DEFAULT_ANTIGRAVITY_PROJECT_ID
+  }
+
+  return DEFAULT_ANTIGRAVITY_PROJECT_ID
+}
+
+/**
+ * Check if error message indicates unknown field name error
+ */
+function isAntigravityUnknownFieldError(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return normalized.includes('unknown name') && normalized.includes('cannot find field')
 }
 
 // =====================
@@ -406,59 +459,80 @@ export function useQuota(file: AuthFileItem) {
   /**
    * Antigravity: POST to multiple URLs with fallback
    * Response: { models: Record<string, AntigravityQuotaInfo> }
+   * Supports multiple request body formats for compatibility
    */
   const loadAntigravityQuota = async (authIndex: string) => {
+    const projectId = await resolveAntigravityProjectId(file)
+    const requestBodies = [JSON.stringify({ projectId }), JSON.stringify({ project: projectId })]
+
     let lastError = ''
     let lastStatus: number | undefined
     let priorityStatus: number | undefined
     let hadSuccess = false
 
     for (const url of ANTIGRAVITY_QUOTA_URLS) {
-      try {
-        const res = await apiCallApi.request({
-          authIndex,
-          method: 'POST',
-          url,
-          header: { ...ANTIGRAVITY_REQUEST_HEADERS },
-          data: '{}'
-        })
-
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          lastError = getApiCallErrorMessage(res)
-          lastStatus = res.statusCode
-          if (res.statusCode === 403 || res.statusCode === 404) {
-            priorityStatus ??= res.statusCode
-          }
-          continue
-        }
-
-        hadSuccess = true
-        const payload = parseAntigravityPayload(res.body ?? res.bodyText)
-        const models = payload?.models
-
-        // models should be an object map, not an array
-        if (!models || typeof models !== 'object' || Array.isArray(models)) {
-          lastError = '模型数据为空或格式错误'
-          continue
-        }
-
-        const groups = buildAntigravityQuotaGroups(models as AntigravityModelsPayload)
-        if (groups.length === 0) {
-          lastError = '未找到配额信息'
-          continue
-        }
-
-        const currentState = quotaStore.getQuotaState(file.name)
-        if (currentState && 'groups' in currentState) {
-          quotaStore.setQuotaState(file.name, {
-            ...currentState,
-            groups,
-            status: 'success'
+      for (let attempt = 0; attempt < requestBodies.length; attempt++) {
+        try {
+          const res = await apiCallApi.request({
+            authIndex,
+            method: 'POST',
+            url,
+            header: { ...ANTIGRAVITY_REQUEST_HEADERS },
+            data: requestBodies[attempt]
           })
+
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            lastError = getApiCallErrorMessage(res)
+            lastStatus = res.statusCode
+            if (res.statusCode === 403 || res.statusCode === 404) {
+              priorityStatus ??= res.statusCode
+            }
+            // If 400 error with unknown field, try next request body format
+            if (
+              res.statusCode === 400 &&
+              isAntigravityUnknownFieldError(lastError) &&
+              attempt < requestBodies.length - 1
+            ) {
+              continue
+            }
+            break
+          }
+
+          hadSuccess = true
+          const payload = parseAntigravityPayload(res.body ?? res.bodyText)
+          const models = payload?.models
+
+          // models should be an object map, not an array
+          if (!models || typeof models !== 'object' || Array.isArray(models)) {
+            lastError = '模型数据为空或格式错误'
+            continue
+          }
+
+          const groups = buildAntigravityQuotaGroups(models as AntigravityModelsPayload)
+          if (groups.length === 0) {
+            lastError = '未找到配额信息'
+            continue
+          }
+
+          const currentState = quotaStore.getQuotaState(file.name)
+          if (currentState && 'groups' in currentState) {
+            quotaStore.setQuotaState(file.name, {
+              ...currentState,
+              groups,
+              status: 'success'
+            })
+          }
+          return
+        } catch (err: unknown) {
+          lastError = err instanceof Error ? err.message : '未知错误'
+          const status = (err as { statusCode?: number })?.statusCode
+          if (status) {
+            lastStatus = status
+            if (status === 403 || status === 404) {
+              priorityStatus ??= status
+            }
+          }
         }
-        return
-      } catch (err: unknown) {
-        lastError = err instanceof Error ? err.message : '未知错误'
       }
     }
 
