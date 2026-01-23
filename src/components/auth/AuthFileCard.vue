@@ -24,6 +24,14 @@
             <h3 class="font-semibold text-foreground truncate" :title="file.name">
               {{ file.name }}
             </h3>
+            <span
+              v-if="codexPlanLabel"
+              class="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
+              :class="codexPlanBadgeClass"
+              title="Codex 套餐类型"
+            >
+              套餐: {{ codexPlanLabel }}
+            </span>
             <span v-if="file.disabled" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 shrink-0">
               已禁用
             </span>
@@ -34,46 +42,68 @@
             <div class="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{{ formatFileSize(file.size) }}</span>
               <span class="w-0.5 h-0.5 rounded-full bg-muted-foreground/50" />
-              <span>{{ formatDate(file.modified) }}</span>
+              <span>{{ formatDate(file.modified ?? file.modtime ?? file.updated_at ?? file.created_at) }}</span>
             </div>
             
-            <!-- Actions Buttons -->
-            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-              <Button v-if="showQuota" variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:scale-110 transition-all duration-200" aria-label="支持模型" title="支持模型" @click="$emit('show-models')">
-                <Bot class="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:scale-110 transition-all duration-200" aria-label="凭证信息" title="凭证信息" @click="$emit('show-info')">
-                <Info class="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:scale-110 transition-all duration-200" aria-label="下载" @click="$emit('download', file.name)">
-                <Download class="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:scale-110 transition-all duration-200" aria-label="删除" @click="$emit('delete', file.name)">
-                <Trash2 class="h-3.5 w-3.5" />
-              </Button>
+            <div class="flex items-center gap-2 shrink-0">
+              <div v-if="canToggleDisabled" class="flex items-center gap-1">
+                <Switch
+                  class="scale-90 origin-right"
+                  :model-value="!isDisabled"
+                  :disabled="toggling"
+                  :title="isDisabled ? '启用凭证' : '禁用凭证'"
+                  @update:model-value="onToggleEnabled"
+                />
+              </div>
+
+              <!-- Actions Buttons -->
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <Button v-if="showQuota" variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:scale-110 transition-all duration-200" aria-label="支持模型" title="支持模型" @click="$emit('show-models')">
+                  <Bot class="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:scale-110 transition-all duration-200" aria-label="凭证信息" title="凭证信息" @click="$emit('show-info')">
+                  <Info class="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:scale-110 transition-all duration-200" aria-label="下载" @click="$emit('download', file.name)">
+                  <Download class="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:scale-110 transition-all duration-200" aria-label="删除" @click="$emit('delete', file.name)">
+                  <Trash2 class="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Status Bar (Request Activity from Stats) -->
+    <!-- Success/Failure + Recent status bar -->
     <div v-if="hasStats" class="mb-4 space-y-2">
-       <div class="flex items-center justify-between text-xs">
-         <span class="text-muted-foreground">最近活动</span>
-         <span class="font-medium" :class="successRateColor">{{ successRateDisplay }}</span>
-       </div>
-       <div class="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-muted/30">
-         <div v-for="(stat, i) in statusBarBlocks" :key="i" 
-              class="h-full flex-1 rounded-sm transition-colors duration-300"
-              :class="{
-                'bg-green-500': stat === 'success',
-                'bg-red-500': stat === 'failure',
-                'bg-yellow-500': stat === 'mixed',
-                'bg-gray-200 dark:bg-gray-700': stat === 'idle'
-              }"
-         ></div>
-       </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        <span class="inline-flex items-center rounded-full px-2 py-0.5 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+          成功: {{ fileStats.success }}
+        </span>
+        <span class="inline-flex items-center rounded-full px-2 py-0.5 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
+          失败: {{ fileStats.failure }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="flex h-1.5 flex-1 gap-0.5 overflow-hidden rounded-full bg-muted/30" title="最近24小时（每格=30分钟；颜色按异常率分级）">
+          <div
+            v-for="(stat, i) in statusBarBlocks"
+            :key="i"
+            class="h-full flex-1 rounded-sm transition-colors duration-300"
+            :class="{
+              'bg-green-500': stat === 'success',
+              'bg-red-500': stat === 'failure',
+              'bg-yellow-500': stat === 'mixed',
+              'bg-gray-200 dark:bg-gray-700': stat === 'idle'
+            }"
+          ></div>
+        </div>
+        <span class="text-xs font-medium tabular-nums" :class="statusRateColor" title="最近24小时异常率">{{ statusRateText }}</span>
+      </div>
     </div>
 
     <!-- Quota Section -->
@@ -194,24 +224,69 @@ import {
   Info
 } from 'lucide-vue-next'
 import Button from '@/components/ui/button.vue'
+import Switch from '@/components/ui/switch.vue'
 import type { AuthFileItem, AntigravityQuotaState, CodexQuotaState, GeminiCliQuotaState } from '@/types'
-import { TYPE_COLORS, formatQuotaResetTime } from '@/utils/quota'
+import { TYPE_COLORS, formatQuotaResetTime, resolveCodexPlanType } from '@/utils/quota'
 import { useQuota } from '@/composables/useQuota'
 import { useAuthStatsStore } from '@/stores/authStats'
 import { formatUnixTimestamp, formatDateOnly } from '@/utils/format'
 
 const props = defineProps<{
   file: AuthFileItem
+  toggling?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'download', name: string): void
   (e: 'delete', name: string): void
   (e: 'show-models'): void
   (e: 'show-info'): void
+  (e: 'toggle-disabled', payload: { file: AuthFileItem; disabled: boolean }): void
 }>()
 
 const { quotaState, loading, loadQuota, resetQuota } = useQuota(props.file)
+
+const codexPlanType = computed(() => {
+  const provider = (props.file.type || '').toString().toLowerCase()
+  if (provider !== 'codex') return null
+
+  const fromQuota = (quotaState.value as Partial<CodexQuotaState> | null | undefined)?.planType
+  const candidate = typeof fromQuota === 'string' ? fromQuota : resolveCodexPlanType(props.file)
+  if (typeof candidate !== 'string') return null
+  const trimmed = candidate.trim().toLowerCase()
+  return trimmed || null
+})
+
+const codexPlanLabel = computed(() => {
+  const plan = codexPlanType.value
+  if (!plan) return null
+  if (plan === 'plus') return 'Plus'
+  if (plan === 'team') return 'Team'
+  if (plan === 'free') return 'Free'
+  return plan
+})
+
+const codexPlanBadgeClass = computed(() => {
+  const plan = codexPlanType.value
+  if (!plan) return ''
+  if (plan === 'free') return 'bg-muted text-muted-foreground'
+  return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+})
+
+const isDisabled = computed(() => Boolean(props.file.disabled))
+const toggling = computed(() => Boolean(props.toggling))
+const canToggleDisabled = computed(() => {
+  const raw = props.file.runtimeOnly ?? props.file.runtime_only
+  if (typeof raw === 'string') {
+    const v = raw.trim().toLowerCase()
+    return !(v === '1' || v === 'true' || v === 'yes' || v === 'on')
+  }
+  return !Boolean(raw)
+})
+
+function onToggleEnabled(enabled: boolean) {
+  emit('toggle-disabled', { file: props.file, disabled: !enabled })
+}
 
 // Subscribe to batch refresh trigger from parent
 const refreshTrigger = inject<Ref<Set<string>>>('quotaRefreshTrigger', undefined)
@@ -294,6 +369,11 @@ const getIconForType = (type?: string) => {
 // Stats from authStats store
 const authStatsStore = useAuthStatsStore()
 
+const authIdKey = computed(() => {
+  const raw = props.file.id ?? (props.file as Record<string, unknown>)['id']
+  return typeof raw === 'string' ? raw.trim() : null
+})
+
 // 获取 authIndex（兼容两种命名方式）
 const authIndexKey = computed(() => {
   const rawAuthIndex = props.file.authIndex ?? (props.file as Record<string, unknown>)['auth_index']
@@ -302,6 +382,13 @@ const authIndexKey = computed(() => {
 
 // 获取统计数据
 const fileStats = computed(() => {
+  // 优先通过稳定的 authId 匹配（跨重启可保持一致）
+  if (authIdKey.value) {
+    const stats = authStatsStore.getStatsByAuthId(authIdKey.value)
+    if (stats.success > 0 || stats.failure > 0) {
+      return stats
+    }
+  }
   // 首先通过 authIndex 匹配
   if (authIndexKey.value) {
     const stats = authStatsStore.getStatsByAuthIndex(authIndexKey.value)
@@ -315,11 +402,17 @@ const fileStats = computed(() => {
 
 // 获取状态栏数据
 const statusBarData = computed(() => {
+  if (authIdKey.value) {
+    const stats = authStatsStore.getStatusBarDataByAuthId(authIdKey.value)
+    if (stats.totalSuccess + stats.totalFailure > 0) {
+      return stats
+    }
+  }
   if (authIndexKey.value) {
     return authStatsStore.getStatusBarData(authIndexKey.value)
   }
   return {
-    blocks: new Array(20).fill('idle'),
+    blocks: new Array(48).fill('idle'),
     successRate: 100,
     totalSuccess: 0,
     totalFailure: 0
@@ -331,24 +424,21 @@ const hasStats = computed(() => {
   return authStatsStore.loaded
 })
 
-// 统计数据详细显示
-const successRateDisplay = computed(() => {
-  const success = fileStats.value.success
-  const failure = fileStats.value.failure
-  const total = success + failure
+const statusRateText = computed(() => {
+  const total = statusBarData.value.totalSuccess + statusBarData.value.totalFailure
   if (total === 0) return '--'
-  const rate = (success / total) * 100
-  return `成功: ${success} | 失败: ${failure} | ${rate.toFixed(1)}%`
+  const failureRate = (statusBarData.value.totalFailure / total) * 100
+  return `${failureRate.toFixed(1)}%`
 })
 
-// 成功率颜色
-const successRateColor = computed(() => {
-  const total = fileStats.value.success + fileStats.value.failure
+// 异常(失败)率颜色（最近 24 小时）
+const statusRateColor = computed(() => {
+  const total = statusBarData.value.totalSuccess + statusBarData.value.totalFailure
   if (total === 0) return 'text-muted-foreground'
-  const rate = (fileStats.value.success / total) * 100
-  if (rate >= 90) return 'text-green-500'
-  if (rate >= 50) return 'text-yellow-500'
-  return 'text-red-500'
+  const failureRate = statusBarData.value.totalFailure / total
+  if (failureRate > 0.5) return 'text-red-500'
+  if (failureRate >= 0.2) return 'text-yellow-500'
+  return 'text-green-500'
 })
 
 // 状态栏块数据

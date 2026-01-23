@@ -55,10 +55,12 @@
         v-for="file in displayFiles"
         :key="file.name"
         :file="file"
+        :toggling="Boolean(togglingMap?.[file.name])"
         @download="$emit('download', $event)"
         @delete="$emit('delete', $event)"
         @show-models="$emit('show-models', file)"
         @show-info="$emit('show-info', file)"
+        @toggle-disabled="$emit('toggle-disabled', $event)"
       />
     </div>
 
@@ -101,6 +103,7 @@ const props = defineProps<{
   title: string
   files: AuthFileItem[]
   sectionClass?: string
+  togglingMap?: Record<string, boolean>
 }>()
 
 const emit = defineEmits<{
@@ -109,6 +112,7 @@ const emit = defineEmits<{
   (e: 'show-models', file: AuthFileItem): void
   (e: 'show-info', file: AuthFileItem): void
   (e: 'refresh', files: AuthFileItem[]): void
+  (e: 'toggle-disabled', payload: { file: AuthFileItem; disabled: boolean }): void
 }>()
 
 const viewMode = ref<'paged' | 'all'>('paged')

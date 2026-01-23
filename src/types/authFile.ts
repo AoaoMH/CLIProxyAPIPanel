@@ -17,14 +17,22 @@ export type AuthFileType =
   | 'unknown';
 
 export interface AuthFileItem {
+  id?: string;
   name: string;
   type?: AuthFileType | string;
   provider?: string;
   size?: number;
   authIndex?: string | number | null;
+  auth_index?: string | number | null;
   runtimeOnly?: boolean | string;
+  runtime_only?: boolean;
   disabled?: boolean;
-  modified?: number;
+  modified?: number | string;
+  modtime?: number | string;
+  status?: string;
+  status_message?: string;
+  updated_at?: string;
+  created_at?: string;
   [key: string]: any;
 }
 

@@ -269,21 +269,41 @@ export function resolveCodexChatgptAccountId(file: AuthFileItem): string | null 
 
 export function resolveCodexPlanType(file: AuthFileItem): string | null {
   const fileAny = file as Record<string, unknown>
-  const metadata = typeof fileAny.metadata === 'object' && fileAny.metadata !== null
-    ? fileAny.metadata as Record<string, unknown>
-    : null
+  const metadata =
+    typeof fileAny.metadata === 'object' && fileAny.metadata !== null
+      ? (fileAny.metadata as Record<string, unknown>)
+      : null
+  const attributes =
+    typeof fileAny.attributes === 'object' && fileAny.attributes !== null
+      ? (fileAny.attributes as Record<string, unknown>)
+      : null
+
+  const idToken = parseIdTokenPayload(fileAny.id_token)
+  const metadataIdToken = parseIdTokenPayload(metadata?.id_token)
+  const attributesIdToken = parseIdTokenPayload(attributes?.id_token)
 
   const candidates = [
     fileAny.plan_type,
     fileAny.planType,
+    fileAny['plan_type'],
+    fileAny['planType'],
+    idToken?.plan_type,
+    idToken?.planType,
     metadata?.plan_type,
-    metadata?.planType
+    metadata?.planType,
+    metadataIdToken?.plan_type,
+    metadataIdToken?.planType,
+    attributes?.plan_type,
+    attributes?.planType,
+    attributesIdToken?.plan_type,
+    attributesIdToken?.planType
   ]
 
   for (const candidate of candidates) {
     const planType = normalizeStringValue(candidate)
     if (planType) return planType.toLowerCase()
   }
+
   return null
 }
 

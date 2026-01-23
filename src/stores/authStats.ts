@@ -16,6 +16,7 @@ export interface KeyStatBucket {
 export interface KeyStats {
   bySource: Record<string, KeyStatBucket>
   byAuthIndex: Record<string, KeyStatBucket>
+  byAuthId: Record<string, KeyStatBucket>
 }
 
 /**
@@ -33,12 +34,18 @@ export interface StatusBarData {
   totalFailure: number
 }
 
+const STATUS_BLOCK_COUNT = 48
+const STATUS_BLOCK_DURATION_MS = 30 * 60 * 1000 // 30 minutes
+const STATUS_WINDOW_MS = STATUS_BLOCK_COUNT * STATUS_BLOCK_DURATION_MS
+
 /**
  * Usage 明细条目
  */
 interface UsageDetail {
   timestamp: string
   source?: string
+  auth_id?: string
+  authId?: string
   auth_index?: number | string
   failed?: boolean
 }
@@ -55,6 +62,14 @@ function normalizeAuthIndex(value: unknown): string | null {
     return trimmed ? trimmed : null
   }
   return null
+}
+
+function normalizeAuthId(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
 }
 
 /**
@@ -85,11 +100,12 @@ function collectUsageDetails(usageData: any): UsageDetail[] {
  */
 function computeKeyStats(usageData: any): KeyStats {
   if (!usageData) {
-    return { bySource: {}, byAuthIndex: {} }
+    return { bySource: {}, byAuthIndex: {}, byAuthId: {} }
   }
 
   const sourceStats: Record<string, KeyStatBucket> = {}
   const authIndexStats: Record<string, KeyStatBucket> = {}
+  const authIdStats: Record<string, KeyStatBucket> = {}
 
   const ensureBucket = (bucket: Record<string, KeyStatBucket>, key: string) => {
     if (!bucket[key]) {
@@ -99,6 +115,9 @@ function computeKeyStats(usageData: any): KeyStats {
   }
 
   const apis = usageData.apis || {}
+  const now = Date.now()
+  const windowStart = now - STATUS_WINDOW_MS
+
   Object.values(apis as any).forEach((apiEntry: any) => {
     const models = apiEntry?.models || {}
 
@@ -106,7 +125,14 @@ function computeKeyStats(usageData: any): KeyStats {
       const details = modelEntry?.details || []
 
       details.forEach((detail: any) => {
+        const timestampRaw = detail?.timestamp
+        const timestamp = typeof timestampRaw === 'string' ? Date.parse(timestampRaw) : Number.NaN
+        if (Number.isNaN(timestamp) || timestamp < windowStart || timestamp > now) {
+          return
+        }
+
         const source = detail?.source || ''
+        const authIdKey = normalizeAuthId(detail?.auth_id ?? detail?.authId)
         const authIndexKey = normalizeAuthIndex(detail?.auth_index)
         const isFailed = detail?.failed === true
 
@@ -127,13 +153,23 @@ function computeKeyStats(usageData: any): KeyStats {
             bucket.success += 1
           }
         }
+
+        if (authIdKey) {
+          const bucket = ensureBucket(authIdStats, authIdKey)
+          if (isFailed) {
+            bucket.failure += 1
+          } else {
+            bucket.success += 1
+          }
+        }
       })
     })
   })
 
   return {
     bySource: sourceStats,
-    byAuthIndex: authIndexStats
+    byAuthIndex: authIndexStats,
+    byAuthId: authIdStats
   }
 }
 
@@ -142,18 +178,17 @@ function computeKeyStats(usageData: any): KeyStats {
  */
 function calculateStatusBarData(
   usageDetails: UsageDetail[],
-  authIndexFilter?: string | number
+  filters?: { authId?: string | null; authIndex?: string | number | null }
 ): StatusBarData {
-  const BLOCK_COUNT = 20
-  const BLOCK_DURATION_MS = 5 * 60 * 1000 // 5 minutes
-  const HOUR_MS = 60 * 60 * 1000
-
   const now = Date.now()
-  const hourAgo = now - HOUR_MS
+  const windowStart = now - STATUS_WINDOW_MS
+
+  const authIdFilterKey = normalizeAuthId(filters?.authId)
+  const authIndexFilterKey = normalizeAuthIndex(filters?.authIndex)
 
   // Initialize blocks
   const blockStats: Array<{ success: number; failure: number }> = Array.from(
-    { length: BLOCK_COUNT },
+    { length: STATUS_BLOCK_COUNT },
     () => ({ success: 0, failure: 0 })
   )
 
@@ -163,24 +198,26 @@ function calculateStatusBarData(
   // Filter and bucket the usage details
   usageDetails.forEach((detail) => {
     const timestamp = Date.parse(detail.timestamp)
-    if (Number.isNaN(timestamp) || timestamp < hourAgo || timestamp > now) {
+    if (Number.isNaN(timestamp) || timestamp < windowStart || timestamp > now) {
       return
     }
 
     // Apply authIndex filter if provided
-    if (authIndexFilter !== undefined) {
+    if (authIdFilterKey) {
+      const detailAuthId = normalizeAuthId(detail.auth_id ?? detail.authId)
+      if (detailAuthId !== authIdFilterKey) return
+    }
+
+    if (authIndexFilterKey) {
       const detailAuthIndex = normalizeAuthIndex(detail.auth_index)
-      const filterKey = normalizeAuthIndex(authIndexFilter)
-      if (detailAuthIndex !== filterKey) {
-        return
-      }
+      if (detailAuthIndex !== authIndexFilterKey) return
     }
 
     // Calculate which block this falls into (0 = oldest, 19 = newest)
-    const ageMs = now - timestamp
-    const blockIndex = BLOCK_COUNT - 1 - Math.floor(ageMs / BLOCK_DURATION_MS)
+    const rawBlockIndex = Math.floor((timestamp - windowStart) / STATUS_BLOCK_DURATION_MS)
+    const blockIndex = Math.min(STATUS_BLOCK_COUNT - 1, Math.max(0, rawBlockIndex))
 
-    if (blockIndex >= 0 && blockIndex < BLOCK_COUNT) {
+    if (blockIndex >= 0 && blockIndex < STATUS_BLOCK_COUNT) {
       if (detail.failed) {
         blockStats[blockIndex].failure += 1
         totalFailure += 1
@@ -191,18 +228,16 @@ function calculateStatusBarData(
     }
   })
 
-  // Convert stats to block states
+  // Convert stats to block states (based on failure rate thresholds)
   const blocks: StatusBlockState[] = blockStats.map((stat) => {
     if (stat.success === 0 && stat.failure === 0) {
       return 'idle'
     }
-    if (stat.failure === 0) {
-      return 'success'
-    }
-    if (stat.success === 0) {
-      return 'failure'
-    }
-    return 'mixed'
+    const total = stat.success + stat.failure
+    const failureRate = total > 0 ? stat.failure / total : 0
+    if (failureRate > 0.5) return 'failure'
+    if (failureRate >= 0.2) return 'mixed'
+    return 'success'
   })
 
   // Calculate success rate
@@ -222,7 +257,7 @@ export const useAuthStatsStore = defineStore('authStats', () => {
   const usageData = ref<any>(null)
   
   // 存储计算后的 keyStats
-  const keyStats = ref<KeyStats>({ bySource: {}, byAuthIndex: {} })
+  const keyStats = ref<KeyStats>({ bySource: {}, byAuthIndex: {}, byAuthId: {} })
   
   // 存储所有 usage details
   const usageDetails = ref<UsageDetail[]>([])
@@ -278,6 +313,12 @@ export const useAuthStatsStore = defineStore('authStats', () => {
     return keyStats.value.byAuthIndex[key] || { success: 0, failure: 0 }
   }
 
+  const getStatsByAuthId = (authId: string | null | undefined): KeyStatBucket => {
+    const key = normalizeAuthId(authId)
+    if (!key) return { success: 0, failure: 0 }
+    return keyStats.value.byAuthId[key] || { success: 0, failure: 0 }
+  }
+
   /**
    * 根据 source (文件名) 获取统计数据
    */
@@ -305,13 +346,26 @@ export const useAuthStatsStore = defineStore('authStats', () => {
     const key = normalizeAuthIndex(authIndex)
     if (!key || usageDetails.value.length === 0) {
       return {
-        blocks: new Array(20).fill('idle') as StatusBlockState[],
+        blocks: new Array(STATUS_BLOCK_COUNT).fill('idle') as StatusBlockState[],
         successRate: 100,
         totalSuccess: 0,
         totalFailure: 0
       }
     }
-    return calculateStatusBarData(usageDetails.value, key)
+    return calculateStatusBarData(usageDetails.value, { authIndex: key })
+  }
+
+  const getStatusBarDataByAuthId = (authId: string | null | undefined): StatusBarData => {
+    const key = normalizeAuthId(authId)
+    if (!key || usageDetails.value.length === 0) {
+      return {
+        blocks: new Array(STATUS_BLOCK_COUNT).fill('idle') as StatusBlockState[],
+        successRate: 100,
+        totalSuccess: 0,
+        totalFailure: 0
+      }
+    }
+    return calculateStatusBarData(usageDetails.value, { authId: key })
   }
 
   /**
@@ -326,7 +380,11 @@ export const useAuthStatsStore = defineStore('authStats', () => {
    * 检查是否有统计数据
    */
   const hasStatsData = computed(() => {
-    return Object.keys(keyStats.value.byAuthIndex).length > 0 || Object.keys(keyStats.value.bySource).length > 0
+    return (
+      Object.keys(keyStats.value.byAuthIndex).length > 0 ||
+      Object.keys(keyStats.value.byAuthId).length > 0 ||
+      Object.keys(keyStats.value.bySource).length > 0
+    )
   })
 
   return {
@@ -339,8 +397,10 @@ export const useAuthStatsStore = defineStore('authStats', () => {
     hasStatsData,
     loadStats,
     getStatsByAuthIndex,
+    getStatsByAuthId,
     getStatsBySource,
     getStatusBarData,
+    getStatusBarDataByAuthId,
     calculateSuccessRate,
     normalizeAuthIndex
   }

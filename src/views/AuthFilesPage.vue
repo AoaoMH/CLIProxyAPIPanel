@@ -107,11 +107,13 @@
         title="Antigravity"
         :files="searchFilteredFiles(antigravityFiles)"
         :section-class="'bg-gradient-to-b from-cyan-50/10 to-transparent dark:from-cyan-900/10'"
+        :toggling-map="authFileToggling"
         @download="downloadFile"
         @delete="deleteFile"
         @show-models="showModelsModal"
         @show-info="showInfoModal"
         @refresh="handleSectionRefresh"
+        @toggle-disabled="toggleAuthFileDisabled"
       />
 
       <!-- Codex Section -->
@@ -120,11 +122,13 @@
         title="Codex"
         :files="searchFilteredFiles(codexFiles)"
         :section-class="'bg-gradient-to-b from-amber-50/10 to-transparent dark:from-amber-900/10'"
+        :toggling-map="authFileToggling"
         @download="downloadFile"
         @delete="deleteFile"
         @show-models="showModelsModal"
         @show-info="showInfoModal"
         @refresh="handleSectionRefresh"
+        @toggle-disabled="toggleAuthFileDisabled"
       />
 
       <!-- Gemini CLI Section -->
@@ -133,11 +137,13 @@
         title="Gemini CLI"
         :files="searchFilteredFiles(geminiCliFiles)"
         :section-class="'bg-gradient-to-b from-blue-50/10 to-transparent dark:from-blue-900/10'"
+        :toggling-map="authFileToggling"
         @download="downloadFile"
         @delete="deleteFile"
         @show-models="showModelsModal"
         @show-info="showInfoModal"
         @refresh="handleSectionRefresh"
+        @toggle-disabled="toggleAuthFileDisabled"
       />
 
       <!-- Other Types Section -->
@@ -146,11 +152,13 @@
         title="其他"
         :files="currentFilter === 'all' ? searchFilteredFiles(otherFiles) : searchFilteredFiles(filteredOtherFiles)"
         :section-class="'bg-gradient-to-b from-gray-50/10 to-transparent dark:from-gray-900/10'"
+        :toggling-map="authFileToggling"
         @download="downloadFile"
         @delete="deleteFile"
         @show-models="showModelsModal"
         @show-info="showInfoModal"
         @refresh="handleSectionRefresh"
+        @toggle-disabled="toggleAuthFileDisabled"
       />
     </div>
 
@@ -260,6 +268,7 @@ const files = ref<AuthFileItem[]>([])
 const fileInput = ref<HTMLInputElement>()
 const searchQuery = ref('')
 const currentFilter = ref('all')
+const authFileToggling = ref<Record<string, boolean>>({})
 
 // Models modal state
 const modelsModalOpen = ref(false)
@@ -412,6 +421,40 @@ async function deleteFile(name: string) {
     await fetchFiles()
   } catch {
     toast({ title: '删除文件失败', variant: 'destructive' })
+  }
+}
+
+function resolveAuthFileIdentifier(file: AuthFileItem): string {
+  const raw = (file.id ?? (file as any).id ?? file.name) as unknown
+  return typeof raw === 'string' ? raw : String(raw)
+}
+
+async function toggleAuthFileDisabled(payload: { file: AuthFileItem; disabled: boolean }) {
+  const fileName = payload.file.name
+  if (authFileToggling.value[fileName]) return
+
+  const prev = Boolean(payload.file.disabled)
+  payload.file.disabled = payload.disabled
+  authFileToggling.value[fileName] = true
+
+  try {
+    await apiClient.patch('/auth-files/status', {
+      name: resolveAuthFileIdentifier(payload.file),
+      disabled: payload.disabled
+    })
+    toast({ title: payload.disabled ? '凭证已禁用' : '凭证已启用' })
+  } catch (err) {
+    payload.file.disabled = prev
+
+    const status = (err as any)?.status as number | undefined
+    const message = err instanceof Error ? err.message : ''
+    if (status === 404 || message.toLowerCase().includes('not found')) {
+      toast({ title: '当前版本不支持凭证开关，请更新 CLI Proxy API', variant: 'destructive' })
+    } else {
+      toast({ title: '切换凭证状态失败', variant: 'destructive' })
+    }
+  } finally {
+    delete authFileToggling.value[fileName]
   }
 }
 
