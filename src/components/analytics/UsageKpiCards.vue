@@ -12,7 +12,7 @@
             </div>
             <div class="mt-2">
               <Skeleton
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="h-9 w-24"
               />
               <div
@@ -24,7 +24,7 @@
             </div>
             <div class="mt-1 text-xs text-muted-foreground">
               <div
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="flex items-center gap-3"
               >
                 <Skeleton class="h-3 w-20" />
@@ -53,7 +53,7 @@
       </div>
       <div class="h-14 border-t border-border/60 bg-muted/10 px-4 py-3">
         <Skeleton
-          v-if="loading || !kpis"
+          v-if="!kpis"
           class="h-full w-full rounded-lg bg-muted/50"
         />
         <LineChart
@@ -76,7 +76,7 @@
             </div>
             <div class="mt-2">
               <Skeleton
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="h-9 w-28"
               />
               <div
@@ -88,7 +88,7 @@
             </div>
             <div class="mt-1 text-xs text-muted-foreground">
               <div
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="flex items-center gap-3"
               >
                 <Skeleton class="h-3 w-24" />
@@ -117,7 +117,7 @@
       </div>
       <div class="h-14 border-t border-border/60 bg-muted/10 px-4 py-3">
         <Skeleton
-          v-if="loading || !kpis"
+          v-if="!kpis"
           class="h-full w-full rounded-lg bg-muted/50"
         />
         <LineChart
@@ -140,7 +140,7 @@
             </div>
             <div class="mt-2">
               <Skeleton
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="h-9 w-20"
               />
               <div
@@ -152,7 +152,7 @@
             </div>
             <div class="mt-1 text-xs text-muted-foreground">
               <Skeleton
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="h-3 w-28"
               />
               <span v-else>最近 60 秒请求数</span>
@@ -166,7 +166,7 @@
       </div>
       <div class="h-14 border-t border-border/60 bg-muted/10 px-4 py-3">
         <Skeleton
-          v-if="loading || !kpis"
+          v-if="!kpis"
           class="h-full w-full rounded-lg bg-muted/50"
         />
         <LineChart
@@ -189,7 +189,7 @@
             </div>
             <div class="mt-2">
               <Skeleton
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="h-9 w-28"
               />
               <div
@@ -201,7 +201,7 @@
             </div>
             <div class="mt-1 text-xs text-muted-foreground">
               <Skeleton
-                v-if="loading || !kpis"
+                v-if="!kpis"
                 class="h-3 w-28"
               />
               <span v-else>最近 60 秒 Token</span>
@@ -215,7 +215,7 @@
       </div>
       <div class="h-14 border-t border-border/60 bg-muted/10 px-4 py-3">
         <Skeleton
-          v-if="loading || !kpis"
+          v-if="!kpis"
           class="h-full w-full rounded-lg bg-muted/50"
         />
         <LineChart
