@@ -594,6 +594,7 @@
     <Sheet 
       :open="modalOpen && modalType === 'openai'" 
       @update:open="closeModal" 
+      :modal="!modelDiscoveryDialog.open"
       size="3xl" 
       :title="`${isEditing ? '编辑' : '添加'} OpenAI 提供商`" 
       description="添加兼容 OpenAI 接口的第三方服务商，支持模型映射和自动发现。"
