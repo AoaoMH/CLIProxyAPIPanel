@@ -79,7 +79,7 @@
         size="icon"
         class="h-8 w-8"
         :class="autoRefresh ? 'text-primary' : ''"
-        :title="autoRefresh ? '点击关闭自动刷新' : '点击开启自动刷新（每10秒刷新）'"
+        :title="autoRefresh ? '点击关闭自动刷新' : '点击开启自动刷新（进行中每2秒，否则10秒）'"
         @click="$emit('update:autoRefresh', !autoRefresh)"
       >
         <RefreshCcw
@@ -188,7 +188,14 @@
           </TableCell>
           <TableCell class="text-center py-4 w-[50px]">
             <Badge
-              v-if="!record.success"
+              v-if="record.status_code === 0"
+              variant="secondary"
+              class="whitespace-nowrap"
+            >
+              进行中
+            </Badge>
+            <Badge
+              v-else-if="!record.success"
               variant="destructive"
               class="whitespace-nowrap"
             >
@@ -220,9 +227,9 @@
           </TableCell>
           <TableCell class="text-right py-4 w-[70px]">
             <span
-              v-if="record.duration_ms != null"
+              v-if="getDisplayDurationMs(record) != null"
               class="text-muted-foreground tabular-nums"
-            >{{ (record.duration_ms / 1000).toFixed(2) }}s</span>
+            >{{ (getDisplayDurationMs(record)! / 1000).toFixed(2) }}s</span>
             <span
               v-else
               class="text-muted-foreground"
@@ -269,6 +276,7 @@ import {
   RefreshButton,
 } from '@/components/ui'
 import { RefreshCcw, Search } from 'lucide-vue-next'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { formatTokens } from '@/utils/format'
 import type { UsageRecord } from '@/api/usageRecords'
 
@@ -312,5 +320,36 @@ function formatDateTime(timestamp: string): string {
 
 function handleRowClick(id: number) {
   emit('showDetail', String(id))
+}
+
+const nowMs = ref(Date.now())
+let nowTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  nowTimer = setInterval(() => {
+    nowMs.value = Date.now()
+  }, 200)
+})
+
+onUnmounted(() => {
+  if (nowTimer) {
+    clearInterval(nowTimer)
+    nowTimer = null
+  }
+})
+
+function getDisplayDurationMs(record: UsageRecord): number | null {
+  if (!record) return null
+
+  // In-flight record: compute elapsed from timestamp so the UI can show a live timer.
+  if (record.status_code === 0) {
+    const t = Date.parse(record.timestamp)
+    if (Number.isFinite(t)) {
+      return Math.max(0, nowMs.value - t)
+    }
+    return null
+  }
+
+  return record.duration_ms ?? null
 }
 </script>

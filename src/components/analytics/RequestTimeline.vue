@@ -297,6 +297,9 @@ const formatLatency = (ms: number | undefined | null): string => {
 
 const getFinalStatusClass = (): string => {
   if (props.overrideStatusCode !== undefined) {
+    if (props.overrideStatusCode === 0) {
+      return 'bg-slate-100 text-slate-700 dark:bg-slate-900/20 dark:text-slate-200'
+    }
     return props.overrideStatusCode === 200
       ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
       : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
@@ -310,6 +313,9 @@ const getFinalStatusClass = (): string => {
 
 const getFinalStatusLabel = (): string => {
   if (props.overrideStatusCode !== undefined) {
+    if (props.overrideStatusCode === 0) {
+      return '进行中'
+    }
     return props.overrideStatusCode === 200 ? '最终成功' : '最终失败'
   }
 

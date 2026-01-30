@@ -20,24 +20,31 @@
       <!-- Status Banner -->
       <div 
         class="p-4 rounded-lg border flex items-center gap-3"
-        :class="record.status_code >= 200 && record.status_code < 300 
-          ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' 
-          : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'"
+        :class="record.status_code === 0
+          ? 'bg-slate-50 dark:bg-slate-900/10 border-slate-200 dark:border-slate-800/30'
+          : record.status_code >= 200 && record.status_code < 300 
+            ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' 
+            : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'"
       >
         <div 
           class="w-2 h-2 rounded-full"
-          :class="record.status_code >= 200 && record.status_code < 300 ? 'bg-green-500' : 'bg-red-500'"
+          :class="record.status_code === 0 ? 'bg-blue-500' : (record.status_code >= 200 && record.status_code < 300 ? 'bg-green-500' : 'bg-red-500')"
         />
         <div class="flex-1">
-          <div class="font-medium" :class="record.status_code >= 200 && record.status_code < 300 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'">
-            {{ record.status_code }} {{ record.status_code >= 200 && record.status_code < 300 ? '成功' : '失败' }}
+          <div
+            class="font-medium"
+            :class="record.status_code === 0
+              ? 'text-slate-700 dark:text-slate-200'
+              : (record.status_code >= 200 && record.status_code < 300 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')"
+          >
+            {{ record.status_code === 0 ? '进行中' : `${record.status_code} ${record.status_code >= 200 && record.status_code < 300 ? '成功' : '失败'}` }}
           </div>
           <div class="text-xs opacity-80 mt-0.5">
             {{ formatTimestamp(record.timestamp) }}
           </div>
         </div>
         <div class="text-right">
-          <div class="font-mono font-bold">{{ record.duration_ms }}ms</div>
+          <div class="font-mono font-bold">{{ displayDurationMs }}ms</div>
           <div class="text-xs opacity-80">耗时</div>
         </div>
       </div>
@@ -214,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Drawer } from '../ui/drawer'
 import { Loader2, Eye, EyeOff, Maximize2, Minimize2, Copy, Check } from 'lucide-vue-next'
 import { usageRecordsApi, type UsageRecord, type RequestCandidate } from '../../api/usageRecords'
@@ -246,6 +253,35 @@ const showFullApiKey = ref(false)
 const activeTab = ref('request-body')
 const currentExpandDepth = ref(1)
 const copiedStates = ref<Record<string, boolean>>({})
+
+const nowMs = ref(Date.now())
+let nowTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  nowTimer = setInterval(() => {
+    nowMs.value = Date.now()
+  }, 200)
+})
+
+onUnmounted(() => {
+  if (nowTimer) {
+    clearInterval(nowTimer)
+    nowTimer = null
+  }
+})
+
+const displayDurationMs = computed(() => {
+  const r = props.record
+  if (!r) return 0
+  if (r.status_code === 0) {
+    const t = Date.parse(r.timestamp)
+    if (Number.isFinite(t)) {
+      return Math.max(0, nowMs.value - t)
+    }
+    return 0
+  }
+  return r.duration_ms ?? 0
+})
 
 // Computed
 const isDark = computed(() => {

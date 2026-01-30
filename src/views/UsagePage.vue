@@ -107,9 +107,12 @@ const filterProvider = ref('__all__')
 const filterStatus = ref<FilterStatusValue>('__all__')
 
 // 自动刷新状态
-const autoRefresh = ref(false)
+const autoRefresh = ref(true)
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
-const AUTO_REFRESH_INTERVAL = 10000 // 10秒刷新一次
+const AUTO_REFRESH_BASE_INTERVAL = 2000 // 2秒tick（有进行中请求时每2秒刷新）
+const AUTO_REFRESH_IDLE_TICKS = 5 // 无进行中请求时每10秒刷新（2s * 5）
+let autoRefreshTick = 0
+let autoRefreshInFlight = false
 
 // 数据状态
 const isLoadingRecords = ref(false)
@@ -123,6 +126,7 @@ const currentRecords = ref<UsageRecord[]>([])
 const totalRecords = ref(0)
 const availableModels = ref<string[]>([])
 const availableProviders = ref<string[]>([])
+const hasActiveRequests = computed(() => currentRecords.value.some(r => r.status_code === 0))
 
 // 详情弹窗状态
 const selectedRecord = ref<UsageRecord | null>(null)
@@ -294,9 +298,21 @@ function closeDetailDrawer() {
 // 自动刷新功能
 function startAutoRefresh() {
   if (autoRefreshTimer) return
-  autoRefreshTimer = setInterval(() => {
-    refreshData()
-  }, AUTO_REFRESH_INTERVAL)
+  autoRefreshTick = 0
+  autoRefreshTimer = setInterval(async () => {
+    if (autoRefreshInFlight) return
+    autoRefreshTick++
+
+    const shouldRefresh = hasActiveRequests.value || (autoRefreshTick % AUTO_REFRESH_IDLE_TICKS === 0)
+    if (!shouldRefresh) return
+
+    autoRefreshInFlight = true
+    try {
+      await refreshData()
+    } finally {
+      autoRefreshInFlight = false
+    }
+  }, AUTO_REFRESH_BASE_INTERVAL)
 }
 
 function stopAutoRefresh() {
@@ -333,6 +349,10 @@ onMounted(async () => {
 
   // 加载记录
   await loadRecords({ page: currentPage.value, pageSize: pageSize.value }, getCurrentFilters())
+
+  if (autoRefresh.value) {
+    startAutoRefresh()
+  }
 })
 
 // 组件卸载时清理定时器
