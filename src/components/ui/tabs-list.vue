@@ -24,8 +24,9 @@ const props = defineProps<Props>()
 
 const listRef = ref<HTMLElement | null>(null)
 const indicatorStyle = ref<Record<string, string>>({
-  transform: 'translateX(0)',
+  transform: 'translate3d(0, 0, 0)',
   width: '0px',
+  height: '0px',
   opacity: '0',
   transition: 'none'
 })
@@ -68,8 +69,9 @@ const updateIndicator = () => {
 
   if (newIndex === -1) {
     indicatorStyle.value = {
-      transform: 'translateX(0)',
+      transform: 'translate3d(0, 0, 0)',
       width: '0px',
+      height: '0px',
       opacity: '0',
       transition: 'none'
     }
@@ -82,11 +84,8 @@ const updateIndicator = () => {
   // 确保按钮已渲染
   if (buttonRect.width === 0) return
 
-  // 计算相对位置：累加前面所有按钮的宽度
-  let offsetLeft = 0
-  for (let i = 0; i < newIndex; i++) {
-    offsetLeft += buttons[i].getBoundingClientRect().width
-  }
+  const offsetLeft = activeButton.offsetLeft
+  const offsetTop = activeButton.offsetTop
 
   // 判断是否需要动画：
   // 1. 首次初始化不需要动画
@@ -100,16 +99,18 @@ const updateIndicator = () => {
   }
 
   indicatorStyle.value = {
-    transform: `translateX(${offsetLeft}px)`,
-    width: `${buttonRect.width}px`,
+    transform: `translate3d(${offsetLeft}px, ${offsetTop}px, 0)`,
+    width: `${activeButton.offsetWidth}px`,
+    height: `${activeButton.offsetHeight}px`,
     opacity: '1',
     transition: isTabChange
-      ? 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+      ? 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s cubic-bezier(0.4, 0, 0.2, 1), height 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
       : 'none'
   }
 }
 
 let rafId: number | null = null
+let resizeObserver: ResizeObserver | null = null
 
 const scheduleIndicatorUpdate = () => {
   if (rafId !== null) {
@@ -152,12 +153,22 @@ onMounted(() => {
   nextTick(() => {
     scheduleIndicatorUpdate()
   })
+  if (typeof ResizeObserver !== 'undefined' && listRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      scheduleIndicatorUpdate()
+    })
+    resizeObserver.observe(listRef.value)
+  }
   window.addEventListener('resize', scheduleIndicatorUpdate)
 })
 
 onUnmounted(() => {
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
   }
   window.removeEventListener('resize', scheduleIndicatorUpdate)
 })
@@ -166,43 +177,37 @@ onUnmounted(() => {
 <style scoped>
 .tabs-list {
   position: relative;
-  height: 2.5rem;
+  min-height: 2.5rem;
   align-items: center;
   justify-content: center;
   border-radius: 0.5rem;
-  background-color: hsl(var(--muted) / 0.3);
+  background-color: var(--muted);
   padding: 0.25rem;
-  color: hsl(var(--muted-foreground));
-  border: 1px solid hsl(var(--border) / 0.6);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
 }
 
 .tabs-indicator {
   position: absolute;
   z-index: 0;
-  top: 0.25rem;
-  bottom: 0.25rem;
+  top: 0;
   left: 0;
   border-radius: 0.375rem;
-  background: linear-gradient(
-    180deg,
-    hsl(var(--background)),
-    hsl(var(--background) / 0.95)
-  );
-  border: 1px solid hsl(var(--border));
+  background: var(--background);
+  border: 1px solid var(--border);
   box-shadow:
     0 1px 3px 0 rgb(0 0 0 / 0.1),
     0 1px 2px -1px rgb(0 0 0 / 0.1);
   pointer-events: none;
 }
 
+/* 兼容 .dark 类名切换模式 */
+:global(.dark) .tabs-indicator,
 @media (prefers-color-scheme: dark) {
   .tabs-indicator {
-    background: linear-gradient(
-      180deg,
-      hsl(var(--accent)),
-      hsl(var(--accent) / 0.95)
-    );
-    border-color: hsl(var(--border) / 0.8);
+    background: color-mix(in srgb, var(--primary), transparent 80%);
+    border: 1px solid color-mix(in srgb, var(--primary), transparent 60%);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--primary), transparent 80%);
   }
 }
 </style>
