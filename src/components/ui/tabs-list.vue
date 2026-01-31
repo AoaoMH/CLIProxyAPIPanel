@@ -202,7 +202,12 @@ onUnmounted(() => {
 }
 
 /* 兼容 .dark 类名切换模式 */
-:global(.dark) .tabs-indicator,
+:global(.dark) .tabs-indicator {
+  background: color-mix(in srgb, var(--primary), transparent 80%);
+  border: 1px solid color-mix(in srgb, var(--primary), transparent 60%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary), transparent 80%);
+}
+
 @media (prefers-color-scheme: dark) {
   .tabs-indicator {
     background: color-mix(in srgb, var(--primary), transparent 80%);

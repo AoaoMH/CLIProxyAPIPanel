@@ -48,10 +48,7 @@
             :key="option.value"
             :value="option.value"
             :disabled="option.disabled"
-            :class="[
-              'cursor-pointer',
-              highlightedIndex === index && 'bg-primary/10'
-            ]"
+            :class="cn('cursor-pointer', highlightedIndex === index && 'bg-primary/10')"
             @mouseenter="highlightedIndex = index"
           >
             <div class="flex items-center justify-between w-full">
