@@ -1,5 +1,5 @@
 <template>
-  <DialogRoot :open="isOpen" @update:open="handleOpenChange">
+  <DialogRoot :open="isOpen" :modal="props.modal" @update:open="handleOpenChange">
     <DialogPortal>
       <!-- 背景遮罩 -->
       <DialogOverlay 
@@ -89,7 +89,7 @@ import {
 import { X } from 'lucide-vue-next'
 
 // Props 定义
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   open?: boolean
   modelValue?: boolean
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | 'full'
@@ -98,7 +98,10 @@ const props = defineProps<{
   icon?: Component
   iconClass?: string
   noPadding?: boolean
-}>()
+  modal?: boolean
+}>(), {
+  modal: true
+})
 
 // Emits 定义
 const emit = defineEmits<{
