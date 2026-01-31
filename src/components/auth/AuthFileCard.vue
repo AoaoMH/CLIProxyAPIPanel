@@ -294,7 +294,7 @@ const canToggleDisabled = computed(() => {
     const v = raw.trim().toLowerCase()
     return !(v === '1' || v === 'true' || v === 'yes' || v === 'on')
   }
-  return !Boolean(raw)
+  return !raw
 })
 
 const canEditMetadata = computed(() => {
