@@ -6,7 +6,7 @@
     size="xl"
     @update:open="$emit('close')"
   >
-    <div v-if="loading || props.loading" class="flex items-center justify-center h-64">
+    <div v-if="internalLoading || props.loading" class="flex items-center justify-center h-64">
       <Loader2 class="w-8 h-8 animate-spin text-muted-foreground" />
     </div>
 
@@ -247,7 +247,7 @@ const emit = defineEmits<{
 }>()
 
 // State
-const loading = ref(false)
+const internalLoading = ref(false)
 const error = ref<string | null>(null)
 const showFullApiKey = ref(false)
 const activeTab = ref('request-body')

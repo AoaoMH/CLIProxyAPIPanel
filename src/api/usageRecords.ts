@@ -192,6 +192,8 @@ export interface RequestCandidate {
   error_message?: string
   candidate_index: number
   retry_index: number
+  request_body?: string
+  response_body?: string
 }
 
 export interface RequestCandidatesResult {

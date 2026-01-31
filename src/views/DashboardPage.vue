@@ -95,10 +95,10 @@
           </div>
         </Card>
 
-        <!-- 每日模型使用数量 -->
+        <!-- 模型使用数量 -->
         <Card class="p-5">
           <h4 class="mb-3 text-xs font-semibold text-foreground uppercase tracking-wider">
-            每日模型使用数量
+            模型使用数量
           </h4>
           <div
             v-if="loading"
@@ -267,6 +267,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { dashboardApi, type UnifiedDashboardStats, type DailyStatsItem } from '@/api/dashboard'
+import { usageRecordsApi } from '@/api/usageRecords'
 import {
   Card,
   Badge,
@@ -279,7 +280,6 @@ import {
   TableCell,
 } from '@/components/ui'
 import PageContainer from '@/components/layout/PageContainer.vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import ELineChart from '@/components/charts/ELineChart.vue'
 import EBarChart from '@/components/charts/EBarChart.vue'
 import {
@@ -392,7 +392,7 @@ const requestTrendOptions = {
   }
 }
 
-// 每日模型使用数量（柱状图）
+// 模型使用数量（近7天，柱状图）
 // 注意：API 返回的是 period 内的总计数，非每日分布。这里展示 period 内各模型的总量对比。
 const modelCountData = computed(() => {
   if (!unifiedData.value || unifiedData.value.model_counts.length === 0) return { labels: [], datasets: [] }
@@ -402,7 +402,7 @@ const modelCountData = computed(() => {
   const sortedCounts = [...counts].sort((a, b) => b.requests - a.requests)
 
   return {
-    labels: sortedCounts.map(c => c.model.replace('claude-', '').replace('gpt-', '')),
+    labels: sortedCounts.map(c => c.model),
     datasets: [
       {
         label: '请求次数',
@@ -454,12 +454,33 @@ async function loadData() {
   loading.value = true
   try {
     const data = await dashboardApi.getUnifiedStats(7)
+    const modelCounts = await (async () => {
+      const dateRange = getLastDaysRange(7)
+      const modelStats = await usageRecordsApi.getModelStats(dateRange.start_time, dateRange.end_time)
+      const modelCountMap = new Map<string, number>()
+      for (const item of modelStats.models || []) {
+        modelCountMap.set(item.model, (modelCountMap.get(item.model) || 0) + item.request_count)
+      }
+      return Array.from(modelCountMap.entries()).map(([model, requests]) => ({ model, requests }))
+    })().catch(() => null)
+    if (modelCounts) {
+      data.model_counts = modelCounts
+    }
     unifiedData.value = data
     dailyStats.value = data.daily_stats
   } catch (err) {
     console.error('Failed to load dashboard data:', err)
   } finally {
     loading.value = false
+  }
+}
+
+function getLastDaysRange(days: number): { start_time: string; end_time: string } {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1))
+  return {
+    start_time: Math.floor(start.getTime() / 1000).toString(),
+    end_time: Math.floor(now.getTime() / 1000).toString()
   }
 }
 

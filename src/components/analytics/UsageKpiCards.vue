@@ -246,7 +246,6 @@ const props = withDefaults(defineProps<{
 })
 
 const kpis = computed(() => props.kpis)
-const loading = computed(() => props.loading)
 
 function parseRgbTriplet(value: string): [number, number, number] {
   const parts = value.split(',').map(p => parseInt(p.trim(), 10)).filter(n => Number.isFinite(n))
@@ -277,8 +276,22 @@ const tokensRgb = computed(() => rgbToTriplet(mixRgb(baseRgb.value, 255, 0.18)))
 const rpmRgb = computed(() => rgbToTriplet(mixRgb(baseRgb.value, 0, 0.12)))
 const tpmRgb = computed(() => rgbToTriplet(mixRgb(baseRgb.value, 255, 0.28)))
 
+function sanitizeTrendPoints(points: KPITrendPoint[] | undefined): KPITrendPoint[] {
+  if (!Array.isArray(points)) return []
+  return points.filter(p => typeof p.t === 'string' && p.t.length > 0 && typeof p.v === 'number' && Number.isFinite(p.v))
+}
+
+function ensureRenderableTrendPoints(points: KPITrendPoint[]): KPITrendPoint[] {
+  if (points.length >= 2) return points
+  if (points.length === 1) {
+    const only = points[0]
+    return [only, { t: `${only.t} `, v: only.v }]
+  }
+  return [{ t: '0', v: 0 }, { t: '1', v: 0 }]
+}
+
 function buildSparkline(points: KPITrendPoint[] | undefined, rgbTriplet: string): ChartData<'line'> {
-  const safe = points ?? []
+  const safe = ensureRenderableTrendPoints(sanitizeTrendPoints(points))
   return {
     labels: safe.map(p => p.t),
     datasets: [
@@ -306,7 +319,7 @@ const sparklineOptions: ChartOptions<'line'> = {
   },
   scales: {
     x: { display: false, grid: { display: false }, ticks: { display: false } },
-    y: { display: false, grid: { display: false }, ticks: { display: false } }
+    y: { display: false, grid: { display: false }, ticks: { display: false }, beginAtZero: true, suggestedMax: 1 }
   },
   elements: {
     line: { capBezierPoints: true },

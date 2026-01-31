@@ -48,12 +48,12 @@
             :key="`${group.id}-${group.startIndex}`"
             class="minimal-node-group"
             :class="{
-              selected: isGroupSelected(group),
-              hovered: isGroupHovered(groupIndex) && !isGroupSelected(group),
+              selected: isGroupSelected(groupIndex),
+              hovered: isGroupHovered(groupIndex) && !isGroupSelected(groupIndex),
             }"
             @mouseenter="hoveredGroupIndex = groupIndex"
             @mouseleave="hoveredGroupIndex = null"
-            @click="selectGroup(group)"
+            @click="selectGroup(groupIndex)"
           >
             <!-- Node container -->
             <div class="node-container">
@@ -66,27 +66,24 @@
               <div
                 class="node-dot"
                 :class="[
-                  getStatusColorClass(group.primaryStatus),
-                  { 'is-first-selected': isGroupSelected(group) && selectedAttemptIndex === 0 },
+                  getStatusColorClass(group.groupStatus),
+                  { 'is-first-selected': isGroupSelected(groupIndex) && selectedAttemptIndex === 0 },
                 ]"
-                @click.stop="selectFirstAttempt(group)"
+                @click.stop="selectGroup(groupIndex)"
               />
 
-              <!-- Sub nodes (retries within the same provider group) -->
-              <div
-                v-if="group.retryCount > 0 && isGroupSelected(group)"
-                class="sub-dots"
-              >
+              <!-- Sub nodes (credential attempts within the same provider group) -->
+              <div class="sub-dots">
                 <button
-                  v-for="(attempt, idx) in group.allAttempts.slice(1)"
+                  v-for="(attempt, idx) in group.allAttempts"
                   :key="attempt.id"
                   class="sub-dot"
                   :class="[
                     getStatusColorClass(attempt.status),
-                    { active: selectedAttemptIndex === idx + 1 },
+                    { active: isGroupSelected(groupIndex) && selectedAttemptIndex === idx },
                   ]"
-                  :title="attempt.api_key_masked || `Key ${idx + 2}`"
-                  @click.stop="selectedAttemptIndex = idx + 1"
+                  :title="attempt.api_key_masked || `Key ${idx + 1}`"
+                  @click.stop="selectAttempt(groupIndex, idx)"
                 />
               </div>
             </div>
@@ -177,6 +174,44 @@
               <div class="error-type">错误信息</div>
               <div class="error-msg">{{ currentAttempt.error_message }}</div>
             </div>
+
+            <div class="payload-section">
+              <div class="payload-tabs">
+                <button
+                  class="payload-tab"
+                  :class="detailTab === 'request' ? 'is-active' : ''"
+                  :disabled="!hasAttemptRequestBody"
+                  @click="detailTab = 'request'"
+                >
+                  请求
+                </button>
+                <button
+                  class="payload-tab"
+                  :class="detailTab === 'response' ? 'is-active' : ''"
+                  :disabled="!hasAttemptResponseBody"
+                  @click="detailTab = 'response'"
+                >
+                  响应
+                </button>
+              </div>
+
+              <div class="payload-body">
+                <ContentFormatter
+                  v-if="detailTab === 'request'"
+                  :data="currentAttempt.request_body"
+                  :expand-depth="2"
+                  :is-dark="isDark"
+                  empty-message="无请求体数据"
+                />
+                <ContentFormatter
+                  v-else
+                  :data="currentAttempt.response_body"
+                  :expand-depth="2"
+                  :is-dark="isDark"
+                  empty-message="无响应体数据"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -198,6 +233,7 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { usageRecordsApi, type RequestCandidate } from '../../api/usageRecords'
+import ContentFormatter from './ContentFormatter.vue'
 
 const props = defineProps<{
   requestId: number
@@ -208,11 +244,11 @@ interface NodeGroup {
   id: string
   providerName: string
   primary: RequestCandidate
-  primaryStatus: string
   allAttempts: RequestCandidate[]
   retryCount: number
   startIndex: number
   endIndex: number
+  groupStatus: string
 }
 
 const loading = ref(false)
@@ -221,6 +257,7 @@ const candidates = ref<RequestCandidate[]>([])
 const selectedGroupIndex = ref(0)
 const selectedAttemptIndex = ref(0)
 const hoveredGroupIndex = ref<number | null>(null)
+const detailTab = ref<'request' | 'response'>('request')
 
 const timeline = computed<RequestCandidate[]>(() => {
   return [...candidates.value].sort((a, b) => {
@@ -230,6 +267,15 @@ const timeline = computed<RequestCandidate[]>(() => {
     return a.retry_index - b.retry_index
   })
 })
+
+const getGroupStatus = (attempts: RequestCandidate[]): string => {
+  if (!attempts.length) return 'pending'
+  if (attempts.some(a => a.success || a.status === 'success')) return 'success'
+  if (attempts.some(a => a.status === 'pending')) return 'pending'
+  if (attempts.some(a => a.status === 'failed')) return 'failed'
+  if (attempts.some(a => a.status === 'skipped')) return 'skipped'
+  return attempts[attempts.length - 1]?.status || 'pending'
+}
 
 // Merge sequential attempts of the same provider into a group.
 const groupedTimeline = computed<NodeGroup[]>(() => {
@@ -245,9 +291,7 @@ const groupedTimeline = computed<NodeGroup[]>(() => {
       current.allAttempts.push(candidate)
       current.retryCount += 1
       current.endIndex = index
-      if (candidate.status === 'success' || candidate.success) {
-        current.primaryStatus = 'success'
-      }
+      current.groupStatus = getGroupStatus(current.allAttempts)
       return
     }
 
@@ -255,11 +299,11 @@ const groupedTimeline = computed<NodeGroup[]>(() => {
       id: providerKey,
       providerName: providerKey,
       primary: candidate,
-      primaryStatus: candidate.status,
       allAttempts: [candidate],
       retryCount: 0,
       startIndex: index,
       endIndex: index,
+      groupStatus: getGroupStatus([candidate]),
     }
     groups.push(current)
   })
@@ -274,6 +318,20 @@ const selectedGroup = computed(() => {
 const currentAttempt = computed(() => {
   if (!selectedGroup.value) return null
   return selectedGroup.value.allAttempts[selectedAttemptIndex.value] || selectedGroup.value.primary
+})
+
+const isDark = computed(() => {
+  return document.documentElement.classList.contains('dark')
+})
+
+const hasAttemptRequestBody = computed(() => {
+  const attempt = currentAttempt.value
+  return !!attempt?.request_body && attempt.request_body.trim() !== ''
+})
+
+const hasAttemptResponseBody = computed(() => {
+  const attempt = currentAttempt.value
+  return !!attempt?.response_body && attempt.response_body.trim() !== ''
 })
 
 const totalLatency = computed(() => {
@@ -347,26 +405,30 @@ const isGroupHovered = (groupIndex: number) => {
   return hoveredGroupIndex.value === groupIndex
 }
 
-const isGroupSelected = (group: NodeGroup) => {
-  return selectedGroupIndex.value === groupedTimeline.value.findIndex(g => g.id === group.id && g.startIndex === group.startIndex)
+const isGroupSelected = (groupIndex: number) => {
+  return selectedGroupIndex.value === groupIndex
 }
 
-const selectGroup = (group: NodeGroup) => {
-  const index = groupedTimeline.value.findIndex(g => g.id === group.id && g.startIndex === group.startIndex)
-  if (index < 0) return
-
-  selectedGroupIndex.value = index
-
-  const successIdx = group.allAttempts.findIndex(a => a.success || a.status === 'success')
-  selectedAttemptIndex.value = successIdx >= 0 ? successIdx : group.allAttempts.length - 1
-}
-
-const selectFirstAttempt = (group: NodeGroup) => {
-  const index = groupedTimeline.value.findIndex(g => g.id === group.id && g.startIndex === group.startIndex)
-  if (index < 0) return
-
-  selectedGroupIndex.value = index
+const selectGroup = (groupIndex: number) => {
+  if (groupIndex < 0 || groupIndex >= groupedTimeline.value.length) return
+  selectedGroupIndex.value = groupIndex
   selectedAttemptIndex.value = 0
+  detailTab.value = 'request'
+}
+
+const selectAttempt = (groupIndex: number, attemptIndex: number) => {
+  if (groupIndex < 0 || groupIndex >= groupedTimeline.value.length) return
+  const group = groupedTimeline.value[groupIndex]
+  if (!group) return
+  const clampedAttemptIndex = Math.max(0, Math.min(attemptIndex, group.allAttempts.length - 1))
+  selectedGroupIndex.value = groupIndex
+  selectedAttemptIndex.value = clampedAttemptIndex
+  if (detailTab.value === 'request' && !hasAttemptRequestBody.value && hasAttemptResponseBody.value) {
+    detailTab.value = 'response'
+  }
+  if (detailTab.value === 'response' && !hasAttemptResponseBody.value && hasAttemptRequestBody.value) {
+    detailTab.value = 'request'
+  }
 }
 
 const navigateGroup = (direction: number) => {
@@ -374,9 +436,8 @@ const navigateGroup = (direction: number) => {
   if (newIndex < 0 || newIndex >= groupedTimeline.value.length) return
 
   selectedGroupIndex.value = newIndex
-  const group = groupedTimeline.value[newIndex]
-  const successIdx = group.allAttempts.findIndex(a => a.success || a.status === 'success')
-  selectedAttemptIndex.value = successIdx >= 0 ? successIdx : group.allAttempts.length - 1
+  selectedAttemptIndex.value = 0
+  detailTab.value = 'request'
 }
 
 const loadCandidates = async () => {
@@ -401,6 +462,7 @@ watch(
   () => {
     selectedGroupIndex.value = 0
     selectedAttemptIndex.value = 0
+    detailTab.value = 'request'
     loadCandidates()
   },
   { immediate: true },
@@ -415,32 +477,22 @@ watch(
     const successGroupIndex = newGroups.findIndex(g => g.allAttempts.some(a => a.success || a.status === 'success'))
     if (successGroupIndex >= 0) {
       selectedGroupIndex.value = successGroupIndex
-      const group = newGroups[successGroupIndex]
-      const attemptIdx = group.allAttempts.findIndex(a => a.success || a.status === 'success')
-      selectedAttemptIndex.value = attemptIdx >= 0 ? attemptIdx : 0
+      selectedAttemptIndex.value = 0
+      detailTab.value = 'request'
       return
     }
 
     const pendingGroupIndex = newGroups.findIndex(g => g.allAttempts.some(a => a.status === 'pending'))
     if (pendingGroupIndex >= 0) {
       selectedGroupIndex.value = pendingGroupIndex
-      selectedAttemptIndex.value = newGroups[pendingGroupIndex].allAttempts.length - 1
+      selectedAttemptIndex.value = 0
+      detailTab.value = 'request'
       return
     }
 
-    for (let i = newGroups.length - 1; i >= 0; i--) {
-      const group = newGroups[i]
-      for (let j = group.allAttempts.length - 1; j >= 0; j--) {
-        if (group.allAttempts[j].status === 'failed') {
-          selectedGroupIndex.value = i
-          selectedAttemptIndex.value = j
-          return
-        }
-      }
-    }
-
     selectedGroupIndex.value = newGroups.length - 1
-    selectedAttemptIndex.value = newGroups[newGroups.length - 1].allAttempts.length - 1
+    selectedAttemptIndex.value = 0
+    detailTab.value = 'request'
   },
   { immediate: true },
 )
@@ -588,6 +640,10 @@ export default {
   opacity: 1;
   transform: scale(1.15);
   box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px currentColor;
+}
+
+.minimal-node-group:not(.selected) .sub-dot {
+  opacity: 0.35;
 }
 
 /* Selected state: breathing animation + ripple effect */
@@ -849,5 +905,46 @@ export default {
   font-family: ui-monospace, monospace;
   color: hsl(var(--destructive));
   line-height: 1.4;
+}
+
+.payload-section {
+  margin-top: 1rem;
+}
+
+.payload-tabs {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.payload-tab {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.payload-tab:hover:not(:disabled) {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.payload-tab.is-active {
+  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.35);
+  color: hsl(var(--primary));
+}
+
+.payload-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.payload-body {
+  margin-top: 0.75rem;
 }
 </style>
