@@ -119,13 +119,19 @@ export type PayloadParamEntry = {
 export type PayloadModelEntry = {
   id: string
   name: string
-  protocol?: 'openai' | 'gemini' | 'claude' | 'codex'
+  protocol?: 'openai' | 'gemini' | 'claude' | 'codex' | 'antigravity'
 }
 
 export type PayloadRule = {
   id: string
   models: PayloadModelEntry[]
   params: PayloadParamEntry[]
+}
+
+export type PayloadFilterRule = {
+  id: string
+  models: PayloadModelEntry[]
+  params: string[]
 }
 
 // Streaming configuration (Requirement 19.1)
@@ -225,6 +231,7 @@ export type VisualConfigValues = {
   oauthModelMappings: OauthChannelMappings[]
   payloadDefaultRules: PayloadRule[]
   payloadOverrideRules: PayloadRule[]
+  payloadFilterRules: PayloadFilterRule[]
   // New fields for extended configuration (Requirements 19.1-19.8)
   streaming: StreamingConfig
   geminiApiKeys: ApiKeyEntry[]
@@ -275,6 +282,7 @@ export const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   oauthModelMappings: [],
   payloadDefaultRules: [],
   payloadOverrideRules: [],
+  payloadFilterRules: [],
   // New fields default values (Requirements 19.1-19.8)
   streaming: {
     keepaliveSeconds: '',

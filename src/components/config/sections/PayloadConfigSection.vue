@@ -1,5 +1,5 @@
 <template>
-  <ConfigSection title="Payload 配置" description="配置请求 payload 的默认值和覆盖规则">
+  <ConfigSection title="Payload 配置" description="配置请求 payload 的默认值、覆盖规则和过滤规则">
     <div class="space-y-6">
       <!-- Default Rules -->
       <div>
@@ -22,6 +22,19 @@
           @update:model-value="updateValue('payloadOverrideRules', $event)"
         />
       </div>
+
+      <!-- Filter Rules -->
+      <div>
+        <h4 class="text-sm font-medium text-foreground mb-3">过滤规则</h4>
+        <p class="text-xs text-muted-foreground mb-3">
+          通过 JSON Path 规则预过滤上游请求体，自动剔除不合规/冗余的请求参数（Request Sanitization）
+        </p>
+        <PayloadFilterRulesEditor
+          :model-value="values.payloadFilterRules"
+          :disabled="disabled"
+          @update:model-value="updateValue('payloadFilterRules', $event)"
+        />
+      </div>
     </div>
   </ConfigSection>
 </template>
@@ -29,11 +42,13 @@
 <script setup lang="ts">
 import ConfigSection from '../ConfigSection.vue'
 import PayloadRulesEditor from '../editors/PayloadRulesEditor.vue'
-import type { PayloadRule } from '@/types/config'
+import PayloadFilterRulesEditor from '../editors/PayloadFilterRulesEditor.vue'
+import type { PayloadFilterRule, PayloadRule } from '@/types/config'
 
 interface PayloadConfigValues {
   payloadDefaultRules: PayloadRule[]
   payloadOverrideRules: PayloadRule[]
+  payloadFilterRules: PayloadFilterRule[]
 }
 
 interface Props {

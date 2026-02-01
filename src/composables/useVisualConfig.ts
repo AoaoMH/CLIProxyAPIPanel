@@ -51,6 +51,7 @@ const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   oauthModelMappings: [],
   payloadDefaultRules: [],
   payloadOverrideRules: [],
+  payloadFilterRules: [],
   // New fields default values (Requirements 19.1-19.8)
   streaming: {
     keepaliveSeconds: '',
@@ -247,6 +248,7 @@ export function useVisualConfig() {
         // Payload 配置
         payloadDefaultRules: parsePayloadRules(parsed.payload?.default),
         payloadOverrideRules: parsePayloadRules(parsed.payload?.override),
+        payloadFilterRules: parsePayloadFilterRules(parsed.payload?.filter),
         
         // New fields (Requirements 19.1-19.8)
         // Streaming 配置 (Requirement 20.1)
@@ -500,7 +502,8 @@ export function useVisualConfig() {
       if (
         hasOwn(parsed, 'payload') ||
         values.payloadDefaultRules.length > 0 ||
-        values.payloadOverrideRules.length > 0
+        values.payloadOverrideRules.length > 0 ||
+        values.payloadFilterRules.length > 0
       ) {
         const payload = ensureRecord(parsed, 'payload')
         if (values.payloadDefaultRules.length > 0) {
@@ -512,6 +515,11 @@ export function useVisualConfig() {
           payload.override = serializePayloadRulesForYaml(values.payloadOverrideRules)
         } else if (hasOwn(payload, 'override')) {
           delete payload.override
+        }
+        if (values.payloadFilterRules.length > 0) {
+          payload.filter = serializePayloadFilterRulesForYaml(values.payloadFilterRules)
+        } else if (hasOwn(payload, 'filter')) {
+          delete payload.filter
         }
         deleteIfEmpty(parsed, 'payload')
       }
@@ -593,6 +601,22 @@ function parsePayloadRules(rules: any): any[] {
                  typeof value === 'object' ? 'json' : 'string',
       value: String(value)
     })) : []
+  }))
+}
+
+function parsePayloadFilterRules(rules: any): any[] {
+  if (!Array.isArray(rules)) return []
+
+  return rules.map((rule, index) => ({
+    id: `payload-filter-rule-${index}`,
+    models: Array.isArray(rule.models)
+      ? rule.models.map((model: any, modelIndex: number) => ({
+          id: `filter-model-${index}-${modelIndex}`,
+          name: typeof model === 'string' ? model : model.name || '',
+          protocol: typeof model === 'object' ? model.protocol : undefined,
+        }))
+      : [],
+    params: Array.isArray(rule.params) ? rule.params.map(String) : [],
   }))
 }
 
@@ -828,4 +852,24 @@ function serializePayloadRulesForYaml(rules: any[]): any[] {
 
     return { models, params }
   }).filter(rule => rule.models.length > 0)
+}
+
+function serializePayloadFilterRulesForYaml(rules: any[]): any[] {
+  return rules
+    .map((rule) => {
+      const models = (rule.models || [])
+        .filter((m: any) => m.name?.trim())
+        .map((m: any) => {
+          const obj: Record<string, any> = { name: m.name.trim() }
+          if (m.protocol) obj.protocol = m.protocol
+          return obj
+        })
+
+      const params = (Array.isArray(rule.params) ? rule.params : [])
+        .map((path: any) => String(path).trim())
+        .filter(Boolean)
+
+      return { models, params }
+    })
+    .filter((rule) => rule.models.length > 0)
 }

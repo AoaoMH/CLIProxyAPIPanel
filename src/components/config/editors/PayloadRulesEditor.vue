@@ -175,7 +175,8 @@ const protocolOptions = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'claude', label: 'Claude' },
-  { value: 'codex', label: 'Codex' }
+  { value: 'codex', label: 'Codex' },
+  { value: 'antigravity', label: 'Antigravity' }
 ]
 
 const valueTypeOptions = [

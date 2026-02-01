@@ -24,12 +24,6 @@
         >
           <span class="flex items-center gap-2">
             {{ tab.label }}
-            <span
-              v-if="tab.key === 'visual'"
-              class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold"
-            >
-              BETA
-            </span>
           </span>
         </button>
       </div>
@@ -160,7 +154,7 @@ const {
   setVisualValues,
 } = useVisualConfig()
 
-const activeTab = ref<ConfigEditorTab>('source')
+const activeTab = ref<ConfigEditorTab>('visual')
 const content = ref('')
 const loading = ref(true)
 const saving = ref(false)
@@ -178,8 +172,8 @@ const isDirty = computed(() =>
 )
 
 const tabs = [
-  { key: 'source' as const, label: '源代码编辑' },
   { key: 'visual' as const, label: '可视化编辑' },
+  { key: 'source' as const, label: '源代码编辑' },
 ]
 
 // CodeMirror 扩展

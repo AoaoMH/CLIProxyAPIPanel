@@ -160,6 +160,44 @@ debug: false
     expect(updatedYaml).toContain('nonstream-keepalive-interval: 20')
   })
 
+  it('should load and preserve payload filter rules (payload.filter)', () => {
+    const { loadVisualValuesFromYaml, applyVisualChangesToYaml, setVisualValues, visualValues } = useVisualConfig()
+
+    const yamlContent = `
+payload:
+  filter:
+    - models:
+        - name: "gemini-2.5-pro"
+          protocol: "gemini"
+      params:
+        - "generationConfig.thinkingConfig.thinkingBudget"
+        - "generationConfig.responseJsonSchema"
+debug: false
+`
+
+    loadVisualValuesFromYaml(yamlContent)
+
+    expect(visualValues.value.payloadFilterRules).toHaveLength(1)
+    expect(visualValues.value.payloadFilterRules[0].models).toHaveLength(1)
+    expect(visualValues.value.payloadFilterRules[0].models[0].name).toBe('gemini-2.5-pro')
+    expect(visualValues.value.payloadFilterRules[0].models[0].protocol).toBe('gemini')
+    expect(visualValues.value.payloadFilterRules[0].params).toEqual([
+      'generationConfig.thinkingConfig.thinkingBudget',
+      'generationConfig.responseJsonSchema',
+    ])
+
+    // Update an unrelated field; payload.filter should be preserved.
+    setVisualValues({ debug: true })
+    const updatedYaml = applyVisualChangesToYaml(yamlContent)
+    const parsed = parseYaml(updatedYaml) as any
+
+    expect(parsed.debug).toBe(true)
+    expect(parsed.payload?.filter?.[0]?.params).toEqual([
+      'generationConfig.thinkingConfig.thinkingBudget',
+      'generationConfig.responseJsonSchema',
+    ])
+  })
+
   it('should persist turning debug off (true -> false)', () => {
     const { loadVisualValuesFromYaml, applyVisualChangesToYaml, setVisualValues } = useVisualConfig()
 

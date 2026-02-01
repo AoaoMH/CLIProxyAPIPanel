@@ -190,7 +190,8 @@ const oauthExcludedModelsValues = computed(() => ({
 
 const payloadConfigValues = computed(() => ({
   payloadDefaultRules: props.values.payloadDefaultRules,
-  payloadOverrideRules: props.values.payloadOverrideRules
+  payloadOverrideRules: props.values.payloadOverrideRules,
+  payloadFilterRules: props.values.payloadFilterRules
 }))
 
 // Unified update handler that merges section updates and emits to parent
