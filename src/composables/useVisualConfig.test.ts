@@ -10,11 +10,14 @@ import { parse as parseYaml } from 'yaml'
 describe('useVisualConfig Integration', () => {
   it('should load basic configuration from YAML', () => {
     const { loadVisualValuesFromYaml, visualValues } = useVisualConfig()
-    
+
     const yamlContent = `
 host: localhost
 port: 8080
 debug: true
+pprof:
+  enable: true
+  addr: "127.0.0.1:8316"
 tls:
   enable: true
   cert: /path/to/cert.pem
@@ -30,6 +33,8 @@ nonstream-keepalive-interval: 15
     expect(visualValues.value.host).toBe('localhost')
     expect(visualValues.value.port).toBe('8080')
     expect(visualValues.value.debug).toBe(true)
+    expect(visualValues.value.pprofEnable).toBe(true)
+    expect(visualValues.value.pprofAddr).toBe('127.0.0.1:8316')
     expect(visualValues.value.tlsEnable).toBe(true)
     expect(visualValues.value.tlsCert).toBe('/path/to/cert.pem')
     expect(visualValues.value.tlsKey).toBe('/path/to/key.pem')
@@ -40,7 +45,7 @@ nonstream-keepalive-interval: 15
 
   it('should load API key configurations from YAML', () => {
     const { loadVisualValuesFromYaml, visualValues } = useVisualConfig()
-    
+
     const yamlContent = `
 gemini-api-key:
   - api-key: "test-gemini-key"
@@ -72,14 +77,24 @@ openai-compatibility:
     expect(visualValues.value.geminiApiKeys).toHaveLength(1)
     expect(visualValues.value.geminiApiKeys[0].apiKey).toBe('test-gemini-key')
     expect(visualValues.value.geminiApiKeys[0].prefix).toBe('gemini')
-    expect(visualValues.value.geminiApiKeys[0].baseUrl).toBe('https://api.gemini.com')
+    expect(visualValues.value.geminiApiKeys[0].baseUrl).toBe(
+      'https://api.gemini.com',
+    )
     expect(visualValues.value.geminiApiKeys[0].headers).toHaveLength(1)
-    expect(visualValues.value.geminiApiKeys[0].headers[0].key).toBe('Authorization')
-    expect(visualValues.value.geminiApiKeys[0].headers[0].value).toBe('Bearer token')
+    expect(visualValues.value.geminiApiKeys[0].headers[0].key).toBe(
+      'Authorization',
+    )
+    expect(visualValues.value.geminiApiKeys[0].headers[0].value).toBe(
+      'Bearer token',
+    )
     expect(visualValues.value.geminiApiKeys[0].models).toHaveLength(1)
-    expect(visualValues.value.geminiApiKeys[0].models[0].name).toBe('gemini-pro')
+    expect(visualValues.value.geminiApiKeys[0].models[0].name).toBe(
+      'gemini-pro',
+    )
     expect(visualValues.value.geminiApiKeys[0].models[0].alias).toBe('gpt-4')
-    expect(visualValues.value.geminiApiKeys[0].excludedModels).toEqual(['gemini-old'])
+    expect(visualValues.value.geminiApiKeys[0].excludedModels).toEqual([
+      'gemini-old',
+    ])
 
     // Check Codex API keys
     expect(visualValues.value.codexApiKeys).toHaveLength(1)
@@ -88,15 +103,30 @@ openai-compatibility:
 
     // Check OpenAI compatibility
     expect(visualValues.value.openaiCompatibility).toHaveLength(1)
-    expect(visualValues.value.openaiCompatibility[0].name).toBe('Custom Provider')
-    expect(visualValues.value.openaiCompatibility[0].baseUrl).toBe('https://api.custom.com')
-    expect(visualValues.value.openaiCompatibility[0].apiKeyEntries).toHaveLength(1)
-    expect(visualValues.value.openaiCompatibility[0].apiKeyEntries[0].apiKey).toBe('custom-key')
-    expect(visualValues.value.openaiCompatibility[0].apiKeyEntries[0].proxyUrl).toBe('https://proxy.com')
+    expect(visualValues.value.openaiCompatibility[0].name).toBe(
+      'Custom Provider',
+    )
+    expect(visualValues.value.openaiCompatibility[0].baseUrl).toBe(
+      'https://api.custom.com',
+    )
+    expect(
+      visualValues.value.openaiCompatibility[0].apiKeyEntries,
+    ).toHaveLength(1)
+    expect(
+      visualValues.value.openaiCompatibility[0].apiKeyEntries[0].apiKey,
+    ).toBe('custom-key')
+    expect(
+      visualValues.value.openaiCompatibility[0].apiKeyEntries[0].proxyUrl,
+    ).toBe('https://proxy.com')
   })
 
   it('should handle api-keys entries as objects (no [object Object])', () => {
-    const { loadVisualValuesFromYaml, applyVisualChangesToYaml, setVisualValues, visualValues } = useVisualConfig()
+    const {
+      loadVisualValuesFromYaml,
+      applyVisualChangesToYaml,
+      setVisualValues,
+      visualValues,
+    } = useVisualConfig()
 
     const yamlContent = `
 api-keys:
@@ -127,8 +157,12 @@ debug: false
   })
 
   it('should apply visual changes back to YAML correctly', () => {
-    const { loadVisualValuesFromYaml, applyVisualChangesToYaml, setVisualValues } = useVisualConfig()
-    
+    const {
+      loadVisualValuesFromYaml,
+      applyVisualChangesToYaml,
+      setVisualValues,
+    } = useVisualConfig()
+
     const originalYaml = `
 host: localhost
 port: 8080
@@ -136,32 +170,42 @@ debug: false
 `
 
     loadVisualValuesFromYaml(originalYaml)
-    
+
     // Update some values
     setVisualValues({
       host: 'updated-host',
       port: '9000',
       debug: true,
+      pprofEnable: true,
+      pprofAddr: '127.0.0.1:8316',
       streaming: {
         keepaliveSeconds: '60',
         bootstrapRetries: '5',
-        nonstreamKeepaliveInterval: '20'
-      }
+        nonstreamKeepaliveInterval: '20',
+      },
     })
 
     const updatedYaml = applyVisualChangesToYaml(originalYaml)
-    
+
     // Verify the YAML contains the updated values
     expect(updatedYaml).toContain('host: updated-host')
     expect(updatedYaml).toContain('port: 9000')
     expect(updatedYaml).toContain('debug: true')
+    expect(updatedYaml).toContain('pprof:')
+    expect(updatedYaml).toContain('pprof:\n  enable: true')
+    expect(updatedYaml).toContain('addr: 127.0.0.1:8316')
     expect(updatedYaml).toContain('keepalive-seconds: 60')
     expect(updatedYaml).toContain('bootstrap-retries: 5')
     expect(updatedYaml).toContain('nonstream-keepalive-interval: 20')
   })
 
   it('should load and preserve payload filter rules (payload.filter)', () => {
-    const { loadVisualValuesFromYaml, applyVisualChangesToYaml, setVisualValues, visualValues } = useVisualConfig()
+    const {
+      loadVisualValuesFromYaml,
+      applyVisualChangesToYaml,
+      setVisualValues,
+      visualValues,
+    } = useVisualConfig()
 
     const yamlContent = `
 payload:
@@ -179,8 +223,12 @@ debug: false
 
     expect(visualValues.value.payloadFilterRules).toHaveLength(1)
     expect(visualValues.value.payloadFilterRules[0].models).toHaveLength(1)
-    expect(visualValues.value.payloadFilterRules[0].models[0].name).toBe('gemini-2.5-pro')
-    expect(visualValues.value.payloadFilterRules[0].models[0].protocol).toBe('gemini')
+    expect(visualValues.value.payloadFilterRules[0].models[0].name).toBe(
+      'gemini-2.5-pro',
+    )
+    expect(visualValues.value.payloadFilterRules[0].models[0].protocol).toBe(
+      'gemini',
+    )
     expect(visualValues.value.payloadFilterRules[0].params).toEqual([
       'generationConfig.thinkingConfig.thinkingBudget',
       'generationConfig.responseJsonSchema',
@@ -199,7 +247,11 @@ debug: false
   })
 
   it('should persist turning debug off (true -> false)', () => {
-    const { loadVisualValuesFromYaml, applyVisualChangesToYaml, setVisualValues } = useVisualConfig()
+    const {
+      loadVisualValuesFromYaml,
+      applyVisualChangesToYaml,
+      setVisualValues,
+    } = useVisualConfig()
 
     const originalYaml = `
 debug: true
@@ -214,7 +266,8 @@ debug: true
   })
 
   it('should migrate legacy remote-management panel-repo key on save', () => {
-    const { loadVisualValuesFromYaml, applyVisualChangesToYaml } = useVisualConfig()
+    const { loadVisualValuesFromYaml, applyVisualChangesToYaml } =
+      useVisualConfig()
 
     const originalYaml = `
 remote-management:
@@ -224,13 +277,15 @@ remote-management:
     loadVisualValuesFromYaml(originalYaml)
     const updatedYaml = applyVisualChangesToYaml(originalYaml)
 
-    expect(updatedYaml).toContain('panel-github-repository: https://github.com/example/legacy')
+    expect(updatedYaml).toContain(
+      'panel-github-repository: https://github.com/example/legacy',
+    )
     expect(updatedYaml).not.toContain('panel-repo')
   })
 
   it('should handle OAuth excluded models configuration', () => {
     const { loadVisualValuesFromYaml, visualValues } = useVisualConfig()
-    
+
     const yamlContent = `
 oauth-excluded-models:
   gemini-cli:
@@ -244,13 +299,13 @@ oauth-excluded-models:
 
     expect(visualValues.value.oauthExcludedModels).toEqual({
       'gemini-cli': ['gemini-1.0-*', '*-preview'],
-      'vertex': ['vertex-old']
+      vertex: ['vertex-old'],
     })
   })
 
   it('should handle malformed YAML gracefully', () => {
     const { loadVisualValuesFromYaml, visualValues } = useVisualConfig()
-    
+
     const malformedYaml = `
 host: localhost
 port: 8080
@@ -260,7 +315,7 @@ debug: true
 
     // Should not throw an error
     expect(() => loadVisualValuesFromYaml(malformedYaml)).not.toThrow()
-    
+
     // Should use default values when parsing fails
     expect(visualValues.value.host).toBe('')
     expect(visualValues.value.port).toBe('')

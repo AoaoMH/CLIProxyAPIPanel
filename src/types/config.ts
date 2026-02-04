@@ -97,7 +97,12 @@ export type RawConfigSection =
 // Visual Config Types for Config Editor
 export type AmpModelMappingEntry = { id: string; from: string; to: string }
 
-export type OauthModelMappingEntry = { id: string; name: string; alias: string; fork: boolean }
+export type OauthModelMappingEntry = {
+  id: string
+  name: string
+  alias: string
+  fork: boolean
+}
 
 export type OauthChannelMappings = {
   id: string
@@ -210,6 +215,8 @@ export type VisualConfigValues = {
   authDir: string
   apiKeysText: string
   debug: boolean
+  pprofEnable: boolean
+  pprofAddr: string
   commercialMode: boolean
   loggingToFile: boolean
   logsMaxTotalSizeMb: string
@@ -244,7 +251,8 @@ export type VisualConfigValues = {
 }
 
 export const makeClientId = () => {
-  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
+  if (typeof globalThis.crypto?.randomUUID === 'function')
+    return globalThis.crypto.randomUUID()
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
 }
 
@@ -261,6 +269,8 @@ export const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   authDir: '',
   apiKeysText: '',
   debug: false,
+  pprofEnable: false,
+  pprofAddr: '',
   commercialMode: false,
   loggingToFile: false,
   logsMaxTotalSizeMb: '',

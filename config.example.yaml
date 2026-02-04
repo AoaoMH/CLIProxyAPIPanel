@@ -1,6 +1,6 @@
 # Server host/interface to bind to. Default is empty ("") to bind all interfaces (IPv4 + IPv6).
 # Use "127.0.0.1" or "localhost" to restrict access to local machine only.
-host: ""
+host: ''
 
 # Server port
 port: 8317
@@ -8,8 +8,8 @@ port: 8317
 # TLS settings for HTTPS. When enabled, the server listens with the provided certificate and key.
 tls:
   enable: false
-  cert: ""
-  key: ""
+  cert: ''
+  key: ''
 
 # Management API settings
 remote-management:
@@ -20,25 +20,30 @@ remote-management:
   # Management key. If a plaintext value is provided here, it will be hashed on startup.
   # All management requests (even from localhost) require this key.
   # Leave empty to disable the Management API entirely (404 for all /v0/management routes).
-  secret-key: ""
+  secret-key: ''
 
   # Disable the bundled management control panel asset download and HTTP route when true.
   disable-control-panel: false
 
   # GitHub repository for the management control panel. Accepts a repository URL or releases API URL.
-  panel-github-repository: "https://github.com/AoaoMH/CLIProxyAPIPanel"
+  panel-github-repository: 'https://github.com/AoaoMH/CLIProxyAPIPanel'
 
 # Authentication directory (supports ~ for home directory)
-auth-dir: "~/.cli-proxy-api"
+auth-dir: '~/.cli-proxy-api'
 
 # API keys for authentication
 api-keys:
-  - "your-api-key-1"
-  - "your-api-key-2"
-  - "your-api-key-3"
+  - 'your-api-key-1'
+  - 'your-api-key-2'
+  - 'your-api-key-3'
 
 # Enable debug logging
 debug: false
+
+# Enable pprof HTTP debug server (host:port). Keep it bound to localhost for safety.
+pprof:
+  enable: false
+  addr: '127.0.0.1:8316'
 
 # When true, disable high-overhead HTTP middleware features to reduce per-request memory usage under high concurrency.
 commercial-mode: false
@@ -61,7 +66,7 @@ usage-statistics-enabled: false
 usage-records-retention-days: 30
 
 # Proxy URL. Supports socks5/http/https protocols. Example: socks5://user:pass@192.168.1.1:1080/
-proxy-url: ""
+proxy-url: ''
 
 # When true, unprefixed model requests only use credentials without a prefix (except when prefix == model name).
 force-model-prefix: false
@@ -79,7 +84,7 @@ quota-exceeded:
 
 # Routing strategy for selecting credentials when multiple match.
 routing:
-  strategy: "round-robin" # round-robin (default), fill-first
+  strategy: 'round-robin' # round-robin (default), fill-first
 
 # When true, enable authentication for the WebSocket API (/v1/ws).
 ws-auth: false
@@ -91,10 +96,6 @@ nonstream-keepalive-interval: 0
 # streaming:
 #   keepalive-seconds: 15   # Default: 0 (disabled). <= 0 disables keep-alives.
 #   bootstrap-retries: 1    # Default: 0 (disabled). Retries before first byte is sent.
-
-# When true, enable official Codex instructions injection for Codex API requests.
-# When false (default), CodexInstructionsForModel returns immediately without modification.
-codex-instructions-enabled: false
 
 # Gemini API keys
 # gemini-api-key:
@@ -228,20 +229,20 @@ codex-instructions-enabled: false
 # You can repeat the same name with different aliases to expose multiple client model names.
 oauth-model-alias:
   antigravity:
-    - name: "rev19-uic3-1p"
-      alias: "gemini-2.5-computer-use-preview-10-2025"
-    - name: "gemini-3-pro-image"
-      alias: "gemini-3-pro-image-preview"
-    - name: "gemini-3-pro-high"
-      alias: "gemini-3-pro-preview"
-    - name: "gemini-3-flash"
-      alias: "gemini-3-flash-preview"
-    - name: "claude-sonnet-4-5"
-      alias: "gemini-claude-sonnet-4-5"
-    - name: "claude-sonnet-4-5-thinking"
-      alias: "gemini-claude-sonnet-4-5-thinking"
-    - name: "claude-opus-4-5-thinking"
-      alias: "gemini-claude-opus-4-5-thinking"
+    - name: 'rev19-uic3-1p'
+      alias: 'gemini-2.5-computer-use-preview-10-2025'
+    - name: 'gemini-3-pro-image'
+      alias: 'gemini-3-pro-image-preview'
+    - name: 'gemini-3-pro-high'
+      alias: 'gemini-3-pro-preview'
+    - name: 'gemini-3-flash'
+      alias: 'gemini-3-flash-preview'
+    - name: 'claude-sonnet-4-5'
+      alias: 'gemini-claude-sonnet-4-5'
+    - name: 'claude-sonnet-4-5-thinking'
+      alias: 'gemini-claude-sonnet-4-5-thinking'
+    - name: 'claude-opus-4-5-thinking'
+      alias: 'gemini-claude-opus-4-5-thinking'
 #   gemini-cli:
 #     - name: "gemini-2.5-pro"          # original model name under this channel
 #       alias: "g2.5p"                  # client-visible alias

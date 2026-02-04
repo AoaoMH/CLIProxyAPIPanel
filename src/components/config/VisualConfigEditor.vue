@@ -146,6 +146,8 @@ const authConfigValues = computed(() => ({
 
 const systemConfigValues = computed(() => ({
   debug: props.values.debug,
+  pprofEnable: props.values.pprofEnable,
+  pprofAddr: props.values.pprofAddr,
   commercialMode: props.values.commercialMode,
   loggingToFile: props.values.loggingToFile,
   usageStatisticsEnabled: props.values.usageStatisticsEnabled,

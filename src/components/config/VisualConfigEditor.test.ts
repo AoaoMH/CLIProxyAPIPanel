@@ -13,17 +13,17 @@ describe('VisualConfigEditor Integration', () => {
   it('should render all configuration sections', () => {
     const wrapper = mount(VisualConfigEditor, {
       props: {
-        values: DEFAULT_VISUAL_VALUES
-      }
+        values: DEFAULT_VISUAL_VALUES,
+      },
     })
 
     // Check that the main container exists
     expect(wrapper.find('.visual-config-editor').exists()).toBe(true)
-    
+
     // Check that all section components are rendered
     const sections = [
       'ServerConfigSection',
-      'TlsConfigSection', 
+      'TlsConfigSection',
       'RemoteManagementSection',
       'AuthConfigSection',
       'SystemConfigSection',
@@ -33,11 +33,11 @@ describe('VisualConfigEditor Integration', () => {
       'AmpcodeConfigSection',
       'OAuthModelMappingsSection',
       'OAuthExcludedModelsSection',
-      'PayloadConfigSection'
+      'PayloadConfigSection',
     ]
 
     // Verify all sections are present in the component
-    sections.forEach(sectionName => {
+    sections.forEach((sectionName) => {
       expect(wrapper.findComponent({ name: sectionName }).exists()).toBe(true)
     })
   })
@@ -45,14 +45,14 @@ describe('VisualConfigEditor Integration', () => {
   it('should emit update:values when section updates', async () => {
     const wrapper = mount(VisualConfigEditor, {
       props: {
-        values: DEFAULT_VISUAL_VALUES
-      }
+        values: DEFAULT_VISUAL_VALUES,
+      },
     })
 
     // Simulate a section update
     const serverSection = wrapper.findComponent({ name: 'ServerConfigSection' })
     const updateData = { host: 'localhost', port: '8080' }
-    
+
     await serverSection.vm.$emit('update', updateData)
 
     // Check that the update:values event was emitted
@@ -66,36 +66,44 @@ describe('VisualConfigEditor Integration', () => {
       host: 'test-host',
       port: '9000',
       debug: true,
+      pprofEnable: true,
+      pprofAddr: '127.0.0.1:8316',
       streaming: {
         keepaliveSeconds: '30',
-        bootstrapRetries: '3'
-      }
+        bootstrapRetries: '3',
+        nonstreamKeepaliveInterval: '15',
+      },
     }
 
     const wrapper = mount(VisualConfigEditor, {
       props: {
-        values: testValues
-      }
+        values: testValues,
+      },
     })
 
     // Check server config section receives correct values
     const serverSection = wrapper.findComponent({ name: 'ServerConfigSection' })
     expect(serverSection.props('values')).toEqual({
       host: 'test-host',
-      port: '9000'
+      port: '9000',
     })
 
     // Check system config section receives correct values
     const systemSection = wrapper.findComponent({ name: 'SystemConfigSection' })
     expect(systemSection.props('values').debug).toBe(true)
+    expect(systemSection.props('values').pprofEnable).toBe(true)
+    expect(systemSection.props('values').pprofAddr).toBe('127.0.0.1:8316')
 
     // Check streaming config section receives correct values
-    const streamingSection = wrapper.findComponent({ name: 'StreamingConfigSection' })
+    const streamingSection = wrapper.findComponent({
+      name: 'StreamingConfigSection',
+    })
     expect(streamingSection.props('values')).toEqual({
       streaming: {
         keepaliveSeconds: '30',
-        bootstrapRetries: '3'
-      }
+        bootstrapRetries: '3',
+        nonstreamKeepaliveInterval: '15',
+      },
     })
   })
 
@@ -103,15 +111,15 @@ describe('VisualConfigEditor Integration', () => {
     const wrapper = mount(VisualConfigEditor, {
       props: {
         values: DEFAULT_VISUAL_VALUES,
-        disabled: true
-      }
+        disabled: true,
+      },
     })
 
     // Check that all sections receive the disabled prop
     const serverSection = wrapper.findComponent({ name: 'ServerConfigSection' })
     const tlsSection = wrapper.findComponent({ name: 'TlsConfigSection' })
     const systemSection = wrapper.findComponent({ name: 'SystemConfigSection' })
-    
+
     expect(serverSection.props('disabled')).toBe(true)
     expect(tlsSection.props('disabled')).toBe(true)
     expect(systemSection.props('disabled')).toBe(true)

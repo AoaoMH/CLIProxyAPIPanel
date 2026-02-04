@@ -1,5 +1,5 @@
 <template>
-  <ConfigSection title="系统配置" description="调试、日志和统计设置">
+  <ConfigSection title="系统配置" description="调试、日志、统计与性能调试设置">
     <div class="space-y-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="flex items-center justify-between">
@@ -11,6 +11,18 @@
             :model-value="values.debug"
             :disabled="disabled"
             @update:model-value="updateValue('debug', $event)"
+          />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="font-medium text-foreground">pprof 调试服务</h4>
+            <p class="text-sm text-muted-foreground">开启 Go pprof HTTP 调试端口</p>
+          </div>
+          <Switch
+            :model-value="values.pprofEnable"
+            :disabled="disabled"
+            @update:model-value="updateValue('pprofEnable', $event)"
           />
         </div>
 
@@ -64,6 +76,17 @@
         </div>
 
         <div>
+          <label class="block text-sm font-medium text-foreground mb-2">pprof 监听地址</label>
+          <Input
+            :model-value="values.pprofAddr"
+            placeholder="127.0.0.1:8316"
+            :disabled="disabled"
+            @update:model-value="updateValue('pprofAddr', $event)"
+          />
+          <p class="text-xs text-muted-foreground mt-1">建议仅监听本机地址（127.0.0.1）</p>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-foreground mb-2">使用记录保留天数</label>
           <Input
             :model-value="values.usageRecordsRetentionDays"
@@ -85,6 +108,8 @@ import { Input, Switch } from '@/components/ui'
 
 interface SystemConfigValues {
   debug: boolean
+  pprofEnable: boolean
+  pprofAddr: string
   commercialMode: boolean
   loggingToFile: boolean
   usageStatisticsEnabled: boolean
