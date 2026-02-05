@@ -42,7 +42,7 @@
         </div>
 
         <!-- Minimal Timeline Track (Grouped) -->
-        <div class="minimal-track">
+        <div ref="trackRef" class="minimal-track">
           <div
             v-for="(group, groupIndex) in groupedTimeline"
             :key="`${group.id}-${group.startIndex}`"
@@ -114,11 +114,24 @@
               >
                 {{ currentAttempt.status_code || getStatusLabel(currentAttempt.status) }}
               </span>
-              <span
-                v-if="selectedGroup.retryCount > 0"
-                class="cache-hint"
-              >
-                {{ selectedAttemptIndex + 1 }}/{{ selectedGroup.allAttempts.length }}
+              <span v-if="selectedGroup.allAttempts.length > 1" class="attempt-nav">
+                <button
+                  class="nav-btn nav-btn-sm"
+                  :disabled="selectedAttemptIndex === 0"
+                  @click="navigateAttempt(-1)"
+                >
+                  <ChevronLeft class="w-4 h-4" />
+                </button>
+                <span class="cache-hint attempt-hint">
+                  {{ selectedAttemptIndex + 1 }}/{{ selectedGroup.allAttempts.length }}
+                </span>
+                <button
+                  class="nav-btn nav-btn-sm"
+                  :disabled="selectedAttemptIndex === selectedGroup.allAttempts.length - 1"
+                  @click="navigateAttempt(1)"
+                >
+                  <ChevronRight class="w-4 h-4" />
+                </button>
               </span>
             </div>
 
@@ -230,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { usageRecordsApi, type RequestCandidate } from '../../api/usageRecords'
 import ContentFormatter from './ContentFormatter.vue'
@@ -258,6 +271,7 @@ const selectedGroupIndex = ref(0)
 const selectedAttemptIndex = ref(0)
 const hoveredGroupIndex = ref<number | null>(null)
 const detailTab = ref<'request' | 'response'>('request')
+const trackRef = ref<HTMLElement | null>(null)
 
 const timeline = computed<RequestCandidate[]>(() => {
   return [...candidates.value].sort((a, b) => {
@@ -409,11 +423,48 @@ const isGroupSelected = (groupIndex: number) => {
   return selectedGroupIndex.value === groupIndex
 }
 
+const getDefaultAttemptIndex = (group: NodeGroup | null | undefined): number => {
+  if (!group || !group.allAttempts.length) return 0
+  for (let i = group.allAttempts.length - 1; i >= 0; i -= 1) {
+    const attempt = group.allAttempts[i]
+    if (attempt?.success || attempt?.status === 'success') return i
+  }
+  return group.allAttempts.length - 1
+}
+
+const normalizeDetailTabForSelection = () => {
+  if (detailTab.value === 'request' && !hasAttemptRequestBody.value && hasAttemptResponseBody.value) {
+    detailTab.value = 'response'
+  }
+  if (detailTab.value === 'response' && !hasAttemptResponseBody.value && hasAttemptRequestBody.value) {
+    detailTab.value = 'request'
+  }
+}
+
+const scrollSelectedGroupIntoView = async () => {
+  await nextTick()
+  const container = trackRef.value
+  if (!container) return
+
+  const groups = container.querySelectorAll<HTMLElement>('.minimal-node-group')
+  const el = groups[selectedGroupIndex.value]
+  if (!el) return
+
+  const containerRect = container.getBoundingClientRect()
+  const elRect = el.getBoundingClientRect()
+  const delta = (elRect.left + elRect.width / 2) - (containerRect.left + containerRect.width / 2)
+
+  if (Math.abs(delta) < 1) return
+  container.scrollTo({ left: container.scrollLeft + delta, behavior: 'smooth' })
+}
+
 const selectGroup = (groupIndex: number) => {
   if (groupIndex < 0 || groupIndex >= groupedTimeline.value.length) return
   selectedGroupIndex.value = groupIndex
-  selectedAttemptIndex.value = 0
   detailTab.value = 'request'
+  selectedAttemptIndex.value = getDefaultAttemptIndex(groupedTimeline.value[groupIndex])
+  normalizeDetailTabForSelection()
+  scrollSelectedGroupIntoView()
 }
 
 const selectAttempt = (groupIndex: number, attemptIndex: number) => {
@@ -423,12 +474,8 @@ const selectAttempt = (groupIndex: number, attemptIndex: number) => {
   const clampedAttemptIndex = Math.max(0, Math.min(attemptIndex, group.allAttempts.length - 1))
   selectedGroupIndex.value = groupIndex
   selectedAttemptIndex.value = clampedAttemptIndex
-  if (detailTab.value === 'request' && !hasAttemptRequestBody.value && hasAttemptResponseBody.value) {
-    detailTab.value = 'response'
-  }
-  if (detailTab.value === 'response' && !hasAttemptResponseBody.value && hasAttemptRequestBody.value) {
-    detailTab.value = 'request'
-  }
+  normalizeDetailTabForSelection()
+  scrollSelectedGroupIntoView()
 }
 
 const navigateGroup = (direction: number) => {
@@ -436,8 +483,18 @@ const navigateGroup = (direction: number) => {
   if (newIndex < 0 || newIndex >= groupedTimeline.value.length) return
 
   selectedGroupIndex.value = newIndex
-  selectedAttemptIndex.value = 0
   detailTab.value = 'request'
+  selectedAttemptIndex.value = getDefaultAttemptIndex(groupedTimeline.value[newIndex])
+  normalizeDetailTabForSelection()
+  scrollSelectedGroupIntoView()
+}
+
+const navigateAttempt = (direction: number) => {
+  const group = selectedGroup.value
+  if (!group) return
+  const nextIndex = selectedAttemptIndex.value + direction
+  if (nextIndex < 0 || nextIndex >= group.allAttempts.length) return
+  selectAttempt(selectedGroupIndex.value, nextIndex)
 }
 
 const loadCandidates = async () => {
@@ -477,22 +534,28 @@ watch(
     const successGroupIndex = newGroups.findIndex(g => g.allAttempts.some(a => a.success || a.status === 'success'))
     if (successGroupIndex >= 0) {
       selectedGroupIndex.value = successGroupIndex
-      selectedAttemptIndex.value = 0
       detailTab.value = 'request'
+      selectedAttemptIndex.value = getDefaultAttemptIndex(newGroups[successGroupIndex])
+      normalizeDetailTabForSelection()
+      scrollSelectedGroupIntoView()
       return
     }
 
     const pendingGroupIndex = newGroups.findIndex(g => g.allAttempts.some(a => a.status === 'pending'))
     if (pendingGroupIndex >= 0) {
       selectedGroupIndex.value = pendingGroupIndex
-      selectedAttemptIndex.value = 0
       detailTab.value = 'request'
+      selectedAttemptIndex.value = getDefaultAttemptIndex(newGroups[pendingGroupIndex])
+      normalizeDetailTabForSelection()
+      scrollSelectedGroupIntoView()
       return
     }
 
     selectedGroupIndex.value = newGroups.length - 1
-    selectedAttemptIndex.value = 0
     detailTab.value = 'request'
+    selectedAttemptIndex.value = getDefaultAttemptIndex(newGroups[newGroups.length - 1])
+    normalizeDetailTabForSelection()
+    scrollSelectedGroupIntoView()
   },
   { immediate: true },
 )
@@ -836,6 +899,22 @@ export default {
   background: hsl(var(--muted) / 0.5);
   border-radius: 4px;
   margin-left: 0.5rem;
+}
+
+.attempt-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: 0.5rem;
+}
+
+.attempt-hint {
+  margin-left: 0;
+}
+
+.nav-btn.nav-btn-sm {
+  width: 24px;
+  height: 24px;
 }
 
 .info-grid {
