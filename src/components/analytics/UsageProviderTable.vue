@@ -12,7 +12,7 @@
             提供商
           </TableHead>
           <TableHead class="h-8 px-2 text-right">
-            请求数
+            请求数(成功/失败)
           </TableHead>
           <TableHead class="h-8 px-2 text-right">
             Tokens
@@ -21,7 +21,7 @@
             成功率
           </TableHead>
           <TableHead class="h-8 px-2 text-right">
-            平均响应
+            平均耗时
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -42,7 +42,12 @@
             {{ provider.provider }}
           </TableCell>
           <TableCell class="text-right py-2 px-2">
-            {{ provider.request_count }}
+            <span class="font-medium">{{ provider.request_count }}</span>
+            <span class="text-muted-foreground"> (</span>
+            <span class="text-green-600 dark:text-green-400">{{ provider.success_count }}</span>
+            <span class="text-muted-foreground">/</span>
+            <span class="text-red-600 dark:text-red-400">{{ provider.failure_count }}</span>
+            <span class="text-muted-foreground">)</span>
           </TableCell>
           <TableCell class="text-right py-2 px-2">
             <span>{{ formatTokens(provider.total_tokens) }}</span>

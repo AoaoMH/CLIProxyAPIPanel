@@ -17,7 +17,7 @@
     <!-- 分析统计 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <UsageModelTable
-        :data="enhancedModelStats"
+        :data="modelStats"
       />
       <UsageProviderTable
         :data="providerStats"
@@ -131,19 +131,6 @@ const hasActiveRequests = computed(() => currentRecords.value.some(r => r.status
 // 详情弹窗状态
 const selectedRecord = ref<UsageRecord | null>(null)
 const isLoadingDetail = ref(false)
-
-// 增强的模型统计（添加效率分析）
-const enhancedModelStats = computed(() => {
-  return modelStats.value.map(model => {
-    const costPerToken = model.total_tokens > 0 
-      ? (model.total_tokens / 1000000).toFixed(4)
-      : '0.0000'
-    return {
-      ...model,
-      costPerToken: `${costPerToken}/M`
-    }
-  })
-})
 
 // 加载热力图数据
 async function loadHeatmapData() {

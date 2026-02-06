@@ -12,13 +12,13 @@
             模型
           </TableHead>
           <TableHead class="h-8 px-2 text-right">
-            请求数
+            请求数(成功/失败)
           </TableHead>
           <TableHead class="h-8 px-2 text-right">
             Tokens
           </TableHead>
           <TableHead class="h-8 px-2 text-right">
-            效率
+            平均耗时
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -39,13 +39,18 @@
             {{ model.model }}
           </TableCell>
           <TableCell class="text-right py-2 px-2">
-            {{ model.request_count }}
+            <span class="font-medium">{{ model.request_count }}</span>
+            <span class="text-muted-foreground"> (</span>
+            <span class="text-green-600 dark:text-green-400">{{ model.success_count }}</span>
+            <span class="text-muted-foreground">/</span>
+            <span class="text-red-600 dark:text-red-400">{{ model.failure_count }}</span>
+            <span class="text-muted-foreground">)</span>
           </TableCell>
           <TableCell class="text-right py-2 px-2">
             <span>{{ formatTokens(model.total_tokens) }}</span>
           </TableCell>
           <TableCell class="text-right text-muted-foreground py-2 px-2">
-            {{ model.costPerToken }}
+            {{ formatDuration(model.avg_duration_ms) }}
           </TableCell>
         </TableRow>
       </TableBody>
@@ -62,21 +67,14 @@ import TableRow from '@/components/ui/table-row.vue'
 import TableHead from '@/components/ui/table-head.vue'
 import TableCell from '@/components/ui/table-cell.vue'
 import { formatTokens } from '@/utils/format'
-
-interface EnhancedModelStats {
-  model: string
-  provider: string
-  request_count: number
-  success_count: number
-  failure_count: number
-  input_tokens: number
-  output_tokens: number
-  total_tokens: number
-  avg_duration_ms: number
-  costPerToken: string
-}
+import type { ModelStats } from '@/api/usageRecords'
 
 defineProps<{
-  data: EnhancedModelStats[]
+  data: ModelStats[]
 }>()
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
 </script>
