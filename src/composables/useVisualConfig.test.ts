@@ -156,6 +156,46 @@ debug: false
     expect(parsed['api-keys'][1]['is-active']).toBe(false)
   })
 
+  it('should preserve existing api-key object fields when adding a new key', () => {
+    const {
+      loadVisualValuesFromYaml,
+      applyVisualChangesToYaml,
+      setVisualValues,
+    } = useVisualConfig()
+
+    const yamlContent = `
+api-keys:
+  - api-key: "aoao16263"
+    is-active: true
+    usage-count: 632
+    input-tokens: 10382661
+    output-tokens: 735422
+    last-used-at: "2026-01-25T04:03:26Z"
+`
+
+    loadVisualValuesFromYaml(yamlContent)
+    setVisualValues({
+      apiKeysText: 'aoao16263\n123',
+    })
+
+    const updatedYaml = applyVisualChangesToYaml(yamlContent)
+    const parsed = parseYaml(updatedYaml) as any
+
+    expect(Array.isArray(parsed['api-keys'])).toBe(true)
+    expect(parsed['api-keys']).toHaveLength(2)
+
+    const first = parsed['api-keys'][0]
+    expect(first['api-key']).toBe('aoao16263')
+    expect(first['is-active']).toBe(true)
+    expect(first['usage-count']).toBe(632)
+    expect(first['input-tokens']).toBe(10382661)
+    expect(first['output-tokens']).toBe(735422)
+    expect(first['last-used-at']).toBe('2026-01-25T04:03:26Z')
+
+    const second = parsed['api-keys'][1]
+    expect(second['api-key']).toBe('123')
+  })
+
   it('should apply visual changes back to YAML correctly', () => {
     const {
       loadVisualValuesFromYaml,

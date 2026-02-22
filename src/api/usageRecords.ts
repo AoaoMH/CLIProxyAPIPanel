@@ -75,6 +75,8 @@ export interface UsageKPIs {
   reasoning_tokens: number
   rpm: number
   tpm: number
+  rpd?: number
+  tpd?: number
   trend_bucket: 'hour' | 'day'
   requests_trend: KPITrendPoint[]
   tokens_trend: KPITrendPoint[]

@@ -115,6 +115,45 @@ function parseApiKeysText(raw: unknown): string {
   return keys.join('\n')
 }
 
+function mergeApiKeysPreservingStructure(
+  existingRaw: unknown,
+  editedKeys: string[],
+): unknown[] {
+  const existingEntries = Array.isArray(existingRaw) ? existingRaw : []
+
+  const pool = new Map<string, unknown[]>()
+  let hasObjectShape = false
+
+  for (const item of existingEntries) {
+    if (asRecord(item)) {
+      hasObjectShape = true
+    }
+
+    const key = extractApiKeyValue(item)
+    if (!key) continue
+    const bucket = pool.get(key) ?? []
+    bucket.push(deepClone(item))
+    pool.set(key, bucket)
+  }
+
+  const merged: unknown[] = []
+  for (const key of editedKeys) {
+    const bucket = pool.get(key)
+    if (bucket && bucket.length > 0) {
+      merged.push(bucket.shift() as unknown)
+      continue
+    }
+
+    if (hasObjectShape) {
+      merged.push({ 'api-key': key })
+    } else {
+      merged.push(key)
+    }
+  }
+
+  return merged
+}
+
 function ensureRecord(
   parent: Record<string, unknown>,
   key: string,
@@ -390,7 +429,10 @@ export function useVisualConfig() {
           .map((key) => key.trim())
           .filter(Boolean)
         if (apiKeys.length > 0) {
-          parsed['api-keys'] = apiKeys
+          parsed['api-keys'] = mergeApiKeysPreservingStructure(
+            parsed['api-keys'],
+            apiKeys,
+          )
         } else if (hasOwn(parsed, 'api-keys')) {
           delete parsed['api-keys']
         }

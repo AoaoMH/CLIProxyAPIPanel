@@ -10,7 +10,7 @@
       </div>
 
       <!-- 标签页切换 -->
-      <div class="flex gap-1 mb-6 border-b border-border overflow-x-auto">
+      <div class="flex gap-1 mb-6 border-b border-border">
         <button
           v-for="tab in tabs"
           :key="tab.key"
@@ -89,7 +89,10 @@
         </div>
 
         <!-- 可视化编辑模式 -->
-        <div v-else-if="activeTab === 'visual'" class="space-y-6">
+        <div
+          v-else-if="activeTab === 'visual'"
+          :class="['space-y-6 transition-all duration-200', showFloatingActions ? 'pb-28' : 'pb-6']"
+        >
           <VisualConfigEditor
             :values="visualValues"
             :disabled="disableControls || loading"
@@ -97,22 +100,69 @@
           />
         </div>
 
-        <!-- 保存按钮 -->
-        <div class="flex justify-end gap-3 pt-4 border-t border-border">
-          <Button variant="outline" @click="loadConfig" :disabled="loading">
-            <RotateCcw class="w-4 h-4 mr-2" />
-            重新加载
-          </Button>
-          <Button
-            @click="handleSave"
-            :disabled="!isDirty || saving || disableControls"
-          >
-            <Loader2 v-if="saving" class="w-4 h-4 mr-2 animate-spin" />
-            <Save v-else class="w-4 h-4 mr-2" />
-            {{ saving ? '保存中...' : '保存配置' }}
-          </Button>
-        </div>
       </div>
+
+      <Transition
+        enter-active-class="duration-200 ease-out"
+        enter-from-class="opacity-0 translate-y-3 scale-95"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 translate-y-3 scale-95"
+      >
+        <div v-if="showFloatingActions" class="floating-action-bar" role="status" aria-live="polite">
+          <span class="floating-dirty-tip">
+            <span class="floating-dirty-dot" aria-hidden="true" />
+            有改动
+          </span>
+          <button
+            class="floating-action-btn floating-action-undo"
+            type="button"
+            :disabled="saving || loading"
+            title="撤销修改"
+            aria-label="撤销修改"
+            @click="revertDialogOpen = true"
+          >
+            <Undo2 class="w-4 h-4" />
+          </button>
+          <button
+            class="floating-action-btn floating-action-save"
+            type="button"
+            :disabled="saving || loading || disableControls || diffDialogOpen"
+            title="保存配置"
+            aria-label="保存配置"
+            @click="handleSave"
+          >
+            <Loader2 v-if="saving" class="w-4 h-4 animate-spin" />
+            <Check v-else class="w-4 h-4" />
+          </button>
+        </div>
+      </Transition>
+
+      <ConfigDiffDialog
+        :open="diffDialogOpen"
+        :original="serverYaml"
+        :modified="mergedYaml"
+        :loading="saving"
+        @cancel="diffDialogOpen = false"
+        @confirm="handleConfirmSave"
+      />
+
+      <Dialog
+        :open="revertDialogOpen"
+        title="确认撤销修改"
+        description="撤销后将恢复到最近一次加载/保存的配置内容，未保存改动会丢失。"
+        @update:open="revertDialogOpen = $event"
+      >
+        <template #footer>
+          <Button variant="outline" :disabled="saving" @click="revertDialogOpen = false">
+            取消
+          </Button>
+          <Button :disabled="saving" @click="handleConfirmRevert">
+            确认撤销
+          </Button>
+        </template>
+      </Dialog>
     </div>
   </PageContainer>
 </template>
@@ -128,9 +178,8 @@ import {
 } from '@codemirror/search'
 import { keymap } from '@codemirror/view'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { ChevronDown, ChevronUp, Loader2, RotateCcw, Save, Search } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronUp, Loader2, Search, Undo2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import { useConfigStore } from '@/stores/config'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useToast } from '@/composables/useToast'
 import { useVisualConfig } from '@/composables/useVisualConfig'
@@ -139,11 +188,12 @@ import PageContainer from '@/components/layout/PageContainer.vue'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
 import VisualConfigEditor from '@/components/config/VisualConfigEditor.vue'
+import ConfigDiffDialog from '@/components/config/ConfigDiffDialog.vue'
+import { Dialog } from '@/components/ui'
 
 type ConfigEditorTab = 'visual' | 'source'
 
 const authStore = useAuthStore()
-const configStore = useConfigStore()
 const { isDark } = useDarkMode()
 const { toast } = useToast()
 const {
@@ -160,6 +210,10 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const dirty = ref(false)
+const diffDialogOpen = ref(false)
+const revertDialogOpen = ref(false)
+const serverYaml = ref('')
+const mergedYaml = ref('')
 
 // 搜索相关
 const searchQuery = ref('')
@@ -169,6 +223,9 @@ const editorRef = ref()
 const disableControls = computed(() => !authStore.isConnected)
 const isDirty = computed(() =>
   activeTab.value === 'visual' ? visualDirty.value : dirty.value
+)
+const showFloatingActions = computed(
+  () => activeTab.value === 'visual' && isDirty.value,
 )
 
 const tabs = [
@@ -195,6 +252,9 @@ const loadConfig = async () => {
 
     content.value = yamlData
     dirty.value = false
+    diffDialogOpen.value = false
+    serverYaml.value = yamlData
+    mergedYaml.value = yamlData
 
     // 直接从 YAML 数据加载到可视化编辑器
     loadVisualValuesFromYaml(yamlData)
@@ -215,19 +275,55 @@ const loadConfig = async () => {
 const handleSave = async () => {
   saving.value = true
   try {
-    const nextContent =
+    const nextMergedYaml =
       activeTab.value === 'visual'
         ? applyVisualChangesToYaml(content.value)
         : content.value
-    await configFileApi.saveConfigYaml(nextContent)
 
-    if (activeTab.value === 'visual') {
-      content.value = nextContent
-      // 保存后重新从YAML内容加载到可视化编辑器
-      loadVisualValuesFromYaml(nextContent)
+    const latestServerYaml = await configFileApi.fetchConfigYaml()
+
+    if (latestServerYaml === nextMergedYaml) {
+      dirty.value = false
+      content.value = latestServerYaml
+      serverYaml.value = latestServerYaml
+      mergedYaml.value = nextMergedYaml
+      loadVisualValuesFromYaml(latestServerYaml)
+      toast({
+        title: '无变更',
+        description: '未检测到可保存的配置变更',
+        variant: 'default',
+      })
+      return
     }
 
+    serverYaml.value = latestServerYaml
+    mergedYaml.value = nextMergedYaml
+    diffDialogOpen.value = true
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : ''
+    toast({
+      title: '保存失败',
+      description: message,
+      variant: 'destructive',
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+const handleConfirmSave = async () => {
+  saving.value = true
+  try {
+    await configFileApi.saveConfigYaml(mergedYaml.value)
+    const latestContent = await configFileApi.fetchConfigYaml()
+
     dirty.value = false
+    diffDialogOpen.value = false
+    content.value = latestContent
+    serverYaml.value = latestContent
+    mergedYaml.value = latestContent
+    loadVisualValuesFromYaml(latestContent)
+
     toast({ title: '保存成功', description: '配置已写入 config.yaml', variant: 'success' })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : ''
@@ -239,6 +335,17 @@ const handleSave = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const handleConfirmRevert = () => {
+  const baseline = serverYaml.value
+  diffDialogOpen.value = false
+  revertDialogOpen.value = false
+  content.value = baseline
+  mergedYaml.value = baseline
+  dirty.value = false
+  loadVisualValuesFromYaml(baseline)
+  toast({ title: '已撤销', description: '未保存的改动已恢复', variant: 'default' })
 }
 
 // 处理内容变化
@@ -325,6 +432,44 @@ onMounted(() => {
 <style scoped>
 .config-page {
   @apply flex flex-col h-full;
+}
+
+.floating-action-bar {
+  @apply fixed left-1/2 -translate-x-1/2 bottom-6 z-50 flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 shadow-2xl backdrop-blur;
+}
+
+@media (min-width: 1024px) {
+  .floating-action-bar {
+    left: calc(50% + 130px);
+  }
+}
+
+.floating-dirty-tip {
+  @apply flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground;
+}
+
+.floating-dirty-dot {
+  @apply inline-block h-2 w-2 rounded-full bg-amber-500;
+}
+
+.floating-action-btn {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors;
+}
+
+.floating-action-btn:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+.floating-action-undo:hover:not(:disabled) {
+  @apply bg-muted;
+}
+
+.floating-action-save {
+  @apply bg-primary text-primary-foreground border-primary;
+}
+
+.floating-action-save:hover:not(:disabled) {
+  @apply opacity-90;
 }
 
 :deep(.cm-editor) {

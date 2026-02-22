@@ -99,7 +99,7 @@
                 class="flex items-center gap-3"
               >
                 <div class="flex items-center gap-1">
-                  <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary/70" />
+                  <span class="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
                   缓存 {{ formatTokens(kpis.cached_tokens) }}
                 </div>
                 <div class="flex items-center gap-1">
@@ -135,9 +135,9 @@
       <div class="p-4 pb-3">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <div class="text-xs font-medium text-muted-foreground tracking-wide">
-              RPM
-            </div>
+              <div class="text-xs font-medium text-muted-foreground tracking-wide">
+                RPM
+              </div>
             <div class="mt-2">
               <Skeleton
                 v-if="!kpis"
@@ -155,7 +155,7 @@
                 v-if="!kpis"
                 class="h-3 w-28"
               />
-              <span v-else>最近 60 秒请求数</span>
+              <span v-else>RPD {{ formatNumber(rpdValue) }}</span>
             </div>
           </div>
 
@@ -184,9 +184,9 @@
       <div class="p-4 pb-3">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <div class="text-xs font-medium text-muted-foreground tracking-wide">
-              TPM
-            </div>
+              <div class="text-xs font-medium text-muted-foreground tracking-wide">
+                TPM
+              </div>
             <div class="mt-2">
               <Skeleton
                 v-if="!kpis"
@@ -204,7 +204,7 @@
                 v-if="!kpis"
                 class="h-3 w-28"
               />
-              <span v-else>最近 60 秒 Token</span>
+              <span v-else>TPD {{ formatTokens(tpdValue) }}</span>
             </div>
           </div>
 
@@ -246,6 +246,23 @@ const props = withDefaults(defineProps<{
 })
 
 const kpis = computed(() => props.kpis)
+const DAILY_FACTOR = 60 * 24
+
+const rpdValue = computed(() => {
+  if (!kpis.value) return 0
+  if (typeof kpis.value.rpd === 'number' && Number.isFinite(kpis.value.rpd)) {
+    return kpis.value.rpd
+  }
+  return (kpis.value.rpm ?? 0) * DAILY_FACTOR
+})
+
+const tpdValue = computed(() => {
+  if (!kpis.value) return 0
+  if (typeof kpis.value.tpd === 'number' && Number.isFinite(kpis.value.tpd)) {
+    return kpis.value.tpd
+  }
+  return (kpis.value.tpm ?? 0) * DAILY_FACTOR
+})
 
 function parseRgbTriplet(value: string): [number, number, number] {
   const parts = value.split(',').map(p => parseInt(p.trim(), 10)).filter(n => Number.isFinite(n))
