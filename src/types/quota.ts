@@ -55,6 +55,7 @@ export interface AntigravityQuotaGroupDefinition {
 export interface GeminiCliQuotaGroupDefinition {
   id: string;
   label: string;
+  preferredModelId?: string;
   modelIds: string[];
 }
 
@@ -160,4 +161,3 @@ export interface ApiCallResponse {
   bodyText?: string
   error?: string
 }
-

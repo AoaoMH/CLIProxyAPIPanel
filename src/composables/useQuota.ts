@@ -30,8 +30,9 @@ import {
   normalizeQuotaFraction,
   normalizeNumberValue,
   normalizeStringValue,
-  ANTIGRAVITY_GROUPS,
-  GEMINI_CLI_GROUPS,
+  ANTIGRAVITY_QUOTA_GROUPS,
+  GEMINI_CLI_GROUP_LOOKUP,
+  GEMINI_CLI_GROUP_ORDER,
   resolveCodexChatgptAccountId,
   resolveGeminiCliProjectId,
   resolveCodexPlanType,
@@ -203,7 +204,7 @@ function buildAntigravityQuotaGroups(models: AntigravityModelsPayload): Antigrav
   const groups: AntigravityQuotaGroup[] = []
   let geminiProResetTime: string | undefined
 
-  for (const def of ANTIGRAVITY_GROUPS) {
+  for (const def of ANTIGRAVITY_QUOTA_GROUPS) {
     const matches = def.identifiers
       .map((identifier) => findAntigravityModel(models, identifier))
       .filter((entry): entry is { id: string; entry: AntigravityQuotaInfo } => Boolean(entry))
@@ -316,14 +317,6 @@ function buildCodexQuotaWindows(payload: CodexUsagePayload): CodexQuotaWindow[] 
 // Builder Functions for Gemini CLI
 // =====================
 
-// Create lookup map from GEMINI_CLI_GROUPS
-const GEMINI_CLI_GROUP_LOOKUP = new Map<string, { id: string; label: string }>()
-for (const group of GEMINI_CLI_GROUPS) {
-  for (const modelId of group.modelIds) {
-    GEMINI_CLI_GROUP_LOOKUP.set(modelId, { id: group.id, label: group.label })
-  }
-}
-
 function minNullableNumber(current: number | null, next: number | null): number | null {
   if (current === null) return next
   if (next === null) return current
@@ -376,8 +369,10 @@ function buildGeminiCliQuotaBuckets(buckets: GeminiCliParsedBucket[]): GeminiCli
     existing.modelIds.push(bucket.modelId)
   })
 
-  return Array.from(grouped.values()).map((bucket) => {
+  const normalizedBuckets = Array.from(grouped.values()).map((bucket) => {
     const uniqueModelIds = Array.from(new Set(bucket.modelIds))
+    const firstModelId = uniqueModelIds[0]
+    const groupId = firstModelId ? GEMINI_CLI_GROUP_LOOKUP.get(firstModelId)?.id : undefined
     return {
       id: bucket.id,
       label: bucket.label,
@@ -385,9 +380,24 @@ function buildGeminiCliQuotaBuckets(buckets: GeminiCliParsedBucket[]): GeminiCli
       remainingAmount: bucket.remainingAmount,
       resetTime: bucket.resetTime,
       tokenType: bucket.tokenType,
-      modelIds: uniqueModelIds
+      modelIds: uniqueModelIds,
+      groupId
     }
   })
+
+  const fallbackRank = GEMINI_CLI_GROUP_ORDER.size + 1
+  normalizedBuckets.sort((a, b) => {
+    const rankA = a.groupId
+      ? (GEMINI_CLI_GROUP_ORDER.get(a.groupId) ?? fallbackRank)
+      : fallbackRank
+    const rankB = b.groupId
+      ? (GEMINI_CLI_GROUP_ORDER.get(b.groupId) ?? fallbackRank)
+      : fallbackRank
+    if (rankA !== rankB) return rankA - rankB
+    return a.label.localeCompare(b.label)
+  })
+
+  return normalizedBuckets.map(({ groupId: _groupId, ...bucket }) => bucket)
 }
 
 // =====================

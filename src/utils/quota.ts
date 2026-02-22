@@ -1,5 +1,4 @@
 import type {
-  ThemeColors,
   TypeColorSet,
   GeminiCliQuotaGroupDefinition,
   AntigravityQuotaGroupDefinition,
@@ -9,45 +8,45 @@ import dayjs from 'dayjs'
 
 // Type colors definition
 export const TYPE_COLORS: Record<string, TypeColorSet> = {
-  antigravity: {
-    light: { bg: '#e0f7fa', text: '#006064', border: '#b2ebf2' },
-    dark: { bg: 'rgba(0, 96, 100, 0.3)', text: '#80deea', border: 'rgba(178, 235, 242, 0.2)' }
-  },
-  codex: {
-    light: { bg: '#fff3e0', text: '#ef6c00', border: '#ffe0b2' },
-    dark: { bg: 'rgba(239, 108, 0, 0.3)', text: '#ffcc80', border: 'rgba(255, 224, 178, 0.2)' }
-  },
-  'gemini-cli': {
-    light: { bg: '#e7efff', text: '#1e4fa3', border: '#c5d9ff' },
-    dark: { bg: 'rgba(30, 79, 163, 0.3)', text: '#9cbdfc', border: 'rgba(197, 217, 255, 0.2)' }
+  qwen: {
+    light: { bg: '#e8f5e9', text: '#2e7d32' },
+    dark: { bg: '#1b5e20', text: '#81c784' }
   },
   gemini: {
-    light: { bg: '#e3f2fd', text: '#1565c0', border: '#bbdefb' },
-    dark: { bg: 'rgba(21, 101, 192, 0.3)', text: '#90caf9', border: 'rgba(187, 222, 251, 0.2)' }
+    light: { bg: '#e3f2fd', text: '#1565c0' },
+    dark: { bg: '#0d47a1', text: '#64b5f6' }
   },
-  claude: {
-    light: { bg: '#fce4ec', text: '#c2185b', border: '#f8bbd0' },
-    dark: { bg: 'rgba(194, 24, 91, 0.3)', text: '#f48fb1', border: 'rgba(248, 187, 208, 0.2)' }
-  },
-  qwen: {
-    light: { bg: '#e8f5e9', text: '#2e7d32', border: '#c8e6c9' },
-    dark: { bg: 'rgba(46, 125, 50, 0.3)', text: '#a5d6a7', border: 'rgba(200, 230, 201, 0.2)' }
+  'gemini-cli': {
+    light: { bg: '#e7efff', text: '#1e4fa3' },
+    dark: { bg: '#1c3f73', text: '#a8c7ff' }
   },
   aistudio: {
-    light: { bg: '#f0f2f5', text: '#2f343c', border: '#e0e0e0' },
-    dark: { bg: 'rgba(55, 60, 66, 0.3)', text: '#cfd3db', border: 'rgba(224, 224, 224, 0.2)' }
+    light: { bg: '#f0f2f5', text: '#2f343c' },
+    dark: { bg: '#373c42', text: '#cfd3db' }
+  },
+  claude: {
+    light: { bg: '#fce4ec', text: '#c2185b' },
+    dark: { bg: '#880e4f', text: '#f48fb1' }
+  },
+  codex: {
+    light: { bg: '#fff3e0', text: '#ef6c00' },
+    dark: { bg: '#e65100', text: '#ffb74d' }
+  },
+  antigravity: {
+    light: { bg: '#e0f7fa', text: '#006064' },
+    dark: { bg: '#004d40', text: '#80deea' }
   },
   iflow: {
-    light: { bg: '#f3e5f5', text: '#7b1fa2', border: '#e1bee7' },
-    dark: { bg: 'rgba(123, 31, 162, 0.3)', text: '#ce93d8', border: 'rgba(225, 190, 231, 0.2)' }
+    light: { bg: '#f3e5f5', text: '#7b1fa2' },
+    dark: { bg: '#4a148c', text: '#ce93d8' }
   },
-  vertex: {
-    light: { bg: '#e8eaf6', text: '#3f51b5', border: '#c5cae9' },
-    dark: { bg: 'rgba(63, 81, 181, 0.3)', text: '#9fa8da', border: 'rgba(197, 202, 233, 0.2)' }
+  empty: {
+    light: { bg: '#f5f5f5', text: '#616161' },
+    dark: { bg: '#424242', text: '#bdbdbd' }
   },
-  default: {
-    light: { bg: '#f5f5f5', text: '#616161', border: '#e0e0e0' },
-    dark: { bg: 'rgba(97, 97, 97, 0.3)', text: '#eeeeee', border: 'rgba(224, 224, 224, 0.2)' }
+  unknown: {
+    light: { bg: '#f0f0f0', text: '#666666', border: '1px dashed #999999' },
+    dark: { bg: '#3a3a3a', text: '#aaaaaa', border: '1px dashed #666666' }
   }
 }
 
@@ -87,6 +86,37 @@ export const GEMINI_CLI_REQUEST_HEADERS = {
   'Authorization': 'Bearer $TOKEN$',
   'Content-Type': 'application/json'
 }
+
+// Claude API configuration
+export const CLAUDE_USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
+
+export const CLAUDE_REQUEST_HEADERS = {
+  'Authorization': 'Bearer $TOKEN$',
+  'Content-Type': 'application/json',
+  'anthropic-beta': 'oauth-2025-04-20'
+}
+
+export const CLAUDE_USAGE_WINDOW_KEYS = [
+  { key: 'five_hour', id: 'five-hour', labelKey: 'claude_quota.five_hour' },
+  { key: 'seven_day', id: 'seven-day', labelKey: 'claude_quota.seven_day' },
+  {
+    key: 'seven_day_oauth_apps',
+    id: 'seven-day-oauth-apps',
+    labelKey: 'claude_quota.seven_day_oauth_apps'
+  },
+  { key: 'seven_day_opus', id: 'seven-day-opus', labelKey: 'claude_quota.seven_day_opus' },
+  {
+    key: 'seven_day_sonnet',
+    id: 'seven-day-sonnet',
+    labelKey: 'claude_quota.seven_day_sonnet'
+  },
+  {
+    key: 'seven_day_cowork',
+    id: 'seven-day-cowork',
+    labelKey: 'claude_quota.seven_day_cowork'
+  },
+  { key: 'iguana_necktie', id: 'iguana-necktie', labelKey: 'claude_quota.iguana_necktie' }
+] as const
 
 // =====================
 // Normalization & Parsing Functions
@@ -342,7 +372,7 @@ export function resolveGeminiCliProjectId(file: AuthFileItem): string | null {
 // Group Definitions for Quota Aggregation
 // =====================
 
-export const ANTIGRAVITY_GROUPS: AntigravityQuotaGroupDefinition[] = [
+export const ANTIGRAVITY_QUOTA_GROUPS: AntigravityQuotaGroupDefinition[] = [
   {
     id: 'claude-gpt',
     label: 'Claude/GPT',
@@ -386,28 +416,36 @@ export const ANTIGRAVITY_GROUPS: AntigravityQuotaGroupDefinition[] = [
   }
 ]
 
-export const GEMINI_CLI_GROUPS: GeminiCliQuotaGroupDefinition[] = [
+export const GEMINI_CLI_QUOTA_GROUPS: GeminiCliQuotaGroupDefinition[] = [
   {
-    id: 'gemini-2-5-flash-series',
-    label: 'Gemini 2.5 Flash Series',
-    modelIds: ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+    id: 'gemini-flash-lite-series',
+    label: 'Gemini Flash Lite Series',
+    preferredModelId: 'gemini-2.5-flash-lite',
+    modelIds: ['gemini-2.5-flash-lite']
   },
   {
-    id: 'gemini-2-5-pro',
-    label: 'Gemini 2.5 Pro',
-    modelIds: ['gemini-2.5-pro']
+    id: 'gemini-flash-series',
+    label: 'Gemini Flash Series',
+    preferredModelId: 'gemini-3-flash-preview',
+    modelIds: ['gemini-3-flash-preview', 'gemini-2.5-flash']
   },
   {
-    id: 'gemini-3-pro-preview',
-    label: 'Gemini 3 Pro Preview',
-    modelIds: ['gemini-3-pro-preview']
-  },
-  {
-    id: 'gemini-3-flash-preview',
-    label: 'Gemini 3 Flash Preview',
-    modelIds: ['gemini-3-flash-preview']
+    id: 'gemini-pro-series',
+    label: 'Gemini Pro Series',
+    preferredModelId: 'gemini-3-1-pro-preview',
+    modelIds: ['gemini-3-1-pro-preview', 'gemini-3-pro-preview', 'gemini-2.5-pro']
   }
 ]
+
+export const GEMINI_CLI_GROUP_ORDER = new Map(
+  GEMINI_CLI_QUOTA_GROUPS.map((group, index) => [group.id, index] as const)
+)
+
+export const GEMINI_CLI_GROUP_LOOKUP = new Map(
+  GEMINI_CLI_QUOTA_GROUPS.flatMap((group) =>
+    group.modelIds.map((modelId) => [modelId, group] as const)
+  )
+)
 
 export const GEMINI_CLI_IGNORED_MODEL_PREFIXES = ['gemini-2.0-flash']
 

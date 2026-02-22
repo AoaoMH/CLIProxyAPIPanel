@@ -23,7 +23,7 @@
         >
           <RouterLink
             :to="item.href"
-            class="group relative flex items-center justify-between px-2.5 py-2 rounded-lg transition-all duration-200"
+            class="group relative flex items-center justify-between px-2.5 py-2 rounded-lg motion-transition"
             :class="[
               isItemActive(item.href)
                 ? 'bg-primary/10 text-primary font-medium'
@@ -34,7 +34,7 @@
             <div class="flex items-center gap-2.5">
               <component
                 :is="item.icon"
-                class="h-4 w-4 transition-colors duration-200"
+                class="h-4 w-4 motion-transition"
                 :class="isItemActive(item.href) ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-foreground'"
                 :stroke-width="isItemActive(item.href) ? 2 : 1.75"
               />

@@ -30,7 +30,7 @@ const variants = {
   elevated: 'rounded-2xl border border-border bg-card text-card-foreground shadow-lg',
 
   // 交互卡片 - 带hover效果,用于可点击列表项
-  interactive: 'rounded-2xl border border-border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 active:scale-[0.99]',
+  interactive: 'rounded-2xl border border-border bg-card text-card-foreground shadow-sm motion-transition hover:shadow-lg hover:border-primary/35 hover:-translate-y-px active:scale-[0.995]',
 
   // 轻量卡片 - 更淡的边框,用于辅助信息区域
   subtle: 'rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm',

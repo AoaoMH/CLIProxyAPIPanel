@@ -40,6 +40,7 @@
         @click="currentFilter = 'all'"
       >
         全部
+        <span class="ml-1.5 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] leading-none dark:bg-white/15">{{ files.length }}</span>
       </button>
       <button
         v-for="type in availableTypes"
@@ -51,6 +52,7 @@
         @click="currentFilter = type"
       >
         {{ type }}
+        <span class="ml-1.5 rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] leading-none dark:bg-white/15">{{ typeCounts[type] || 0 }}</span>
       </button>
     </div>
 
@@ -388,6 +390,16 @@ const availableTypes = computed(() => {
     if (f.type) types.add(f.type)
   })
   return Array.from(types).sort()
+})
+
+const typeCounts = computed<Record<string, number>>(() => {
+  const counts: Record<string, number> = {}
+  files.value.forEach((f) => {
+    const key = (f.type || '').trim()
+    if (!key) return
+    counts[key] = (counts[key] || 0) + 1
+  })
+  return counts
 })
 
 // Group files by type

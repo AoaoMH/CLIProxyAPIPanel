@@ -100,20 +100,39 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="flex h-1.5 flex-1 gap-0.5 overflow-hidden rounded-full bg-muted/30" title="最近24小时（每格=30分钟；颜色按异常率分级）">
+        <div class="relative flex-1" @mouseleave="onStatusBarMouseLeave">
+          <div class="flex h-4 w-full items-center gap-0.5 overflow-visible rounded-sm bg-muted/30 px-0.5" title="最近24小时（每格=30分钟）">
+            <div
+              v-for="(stat, i) in statusBarBlocks"
+              :key="i"
+              class="h-2 flex-1 rounded-none transform-gpu transition-all duration-150"
+              :class="[
+                {
+                  'bg-green-500': stat === 'success',
+                  'bg-red-500': stat === 'failure',
+                  'bg-yellow-500': stat === 'mixed',
+                  'bg-gray-200 dark:bg-gray-700': stat === 'idle'
+                },
+                hoveredBlockIndex === i ? 'h-4 shadow-sm z-10' : ''
+              ]"
+              @mouseenter="onStatusBlockMouseEnter(i)"
+            ></div>
+          </div>
+
           <div
-            v-for="(stat, i) in statusBarBlocks"
-            :key="i"
-            class="h-full flex-1 rounded-sm transition-colors duration-300"
-            :class="{
-              'bg-green-500': stat === 'success',
-              'bg-red-500': stat === 'failure',
-              'bg-yellow-500': stat === 'mixed',
-              'bg-gray-200 dark:bg-gray-700': stat === 'idle'
-            }"
-          ></div>
+            v-if="hoveredBlockIndex !== null"
+            class="pointer-events-none absolute -top-20 z-20 min-w-48 -translate-x-1/2 rounded-md border border-border/70 bg-popover px-2.5 py-1.5 text-xs shadow-md"
+            :style="{ left: `${hoveredTooltipLeftPercent}%` }"
+          >
+            <div class="font-medium text-foreground">{{ statusBlockTooltipTitle(hoveredBlockIndex) }}</div>
+            <div class="mt-0.5 flex items-center gap-2">
+              <span class="font-medium text-green-600 dark:text-green-400">成功: {{ hoveredBlockStats.success }}</span>
+              <span class="font-medium text-red-600 dark:text-red-400">失败: {{ hoveredBlockStats.failure }}</span>
+            </div>
+            <div class="text-foreground/80">成功率: <span class="font-semibold">{{ hoveredBlockSuccessRateText }}</span></div>
+          </div>
         </div>
-        <span class="text-xs font-medium tabular-nums" :class="statusRateColor" title="最近24小时异常率">{{ statusRateText }}</span>
+        <span class="text-xs font-medium tabular-nums" :class="statusRateColor" title="最近24小时成功率">{{ statusRateText }}</span>
       </div>
     </div>
 
@@ -221,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, watch, onMounted, type Ref } from 'vue'
+import { computed, inject, watch, onMounted, ref, type Ref } from 'vue'
 import { 
   FileJson, 
   Download, 
@@ -473,6 +492,7 @@ const statusBarData = computed(() => {
   }
   return {
     blocks: new Array(48).fill('idle'),
+    blockStats: Array.from({ length: 48 }, () => ({ success: 0, failure: 0, successRate: 100 })),
     successRate: 100,
     totalSuccess: 0,
     totalFailure: 0
@@ -487,22 +507,81 @@ const hasStats = computed(() => {
 const statusRateText = computed(() => {
   const total = statusBarData.value.totalSuccess + statusBarData.value.totalFailure
   if (total === 0) return '--'
-  const failureRate = (statusBarData.value.totalFailure / total) * 100
-  return `${failureRate.toFixed(1)}%`
+  return `${statusBarData.value.successRate.toFixed(1)}%`
 })
 
-// 异常(失败)率颜色（最近 24 小时）
+// 成功率颜色（最近 24 小时）
 const statusRateColor = computed(() => {
   const total = statusBarData.value.totalSuccess + statusBarData.value.totalFailure
   if (total === 0) return 'text-muted-foreground'
-  const failureRate = statusBarData.value.totalFailure / total
-  if (failureRate > 0.5) return 'text-red-500'
-  if (failureRate >= 0.2) return 'text-yellow-500'
-  return 'text-green-500'
+  const successRate = statusBarData.value.successRate / 100
+  if (successRate >= 0.8) return 'text-green-500'
+  if (successRate >= 0.5) return 'text-yellow-500'
+  return 'text-red-500'
 })
 
 // 状态栏块数据
 const statusBarBlocks = computed(() => statusBarData.value.blocks)
+
+const statusBlockTooltip = (index: number) => {
+  const stats = statusBarData.value.blockStats[index]
+  if (!stats) {
+    return '成功: 0 | 失败: 0 | 成功率: --'
+  }
+  const hasData = stats.success + stats.failure > 0
+  const successRateText = hasData ? `${stats.successRate.toFixed(1)}%` : '--'
+  return `成功: ${stats.success} | 失败: ${stats.failure} | 成功率: ${successRateText}`
+}
+
+const hoveredBlockIndex = ref<number | null>(null)
+
+const hoveredTooltipLeftPercent = computed(() => {
+  if (hoveredBlockIndex.value === null || statusBarBlocks.value.length === 0) return 50
+  const ratio = (hoveredBlockIndex.value + 0.5) / statusBarBlocks.value.length
+  return Math.min(96, Math.max(4, ratio * 100))
+})
+
+const hoveredBlockStats = computed(() => {
+  if (hoveredBlockIndex.value === null) {
+    return { success: 0, failure: 0, successRate: 100 }
+  }
+  return statusBarData.value.blockStats[hoveredBlockIndex.value] || { success: 0, failure: 0, successRate: 100 }
+})
+
+const hoveredBlockSuccessRateText = computed(() => {
+  const stats = hoveredBlockStats.value
+  const total = stats.success + stats.failure
+  return total > 0 ? `${stats.successRate.toFixed(1)}%` : '--'
+})
+
+const formatTooltipTime = (date: Date) => {
+  const hh = `${date.getHours()}`.padStart(2, '0')
+  const mm = `${date.getMinutes()}`.padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+const statusBlockTooltipTitle = (index: number) => {
+  const totalBlocks = statusBarBlocks.value.length
+  if (totalBlocks <= 0) return '时间：--'
+
+  const now = new Date()
+  const totalWindowMinutes = 24 * 60
+  const blockMinutes = Math.max(1, Math.floor(totalWindowMinutes / totalBlocks))
+
+  const windowStart = new Date(now.getTime() - totalWindowMinutes * 60 * 1000)
+  const blockStart = new Date(windowStart.getTime() + index * blockMinutes * 60 * 1000)
+  const blockEnd = new Date(Math.min(now.getTime(), blockStart.getTime() + blockMinutes * 60 * 1000))
+
+  return `时间：${formatTooltipTime(blockStart)} - ${formatTooltipTime(blockEnd)}`
+}
+
+const onStatusBlockMouseEnter = (index: number) => {
+  hoveredBlockIndex.value = index
+}
+
+const onStatusBarMouseLeave = () => {
+  hoveredBlockIndex.value = null
+}
 
 // 组件挂载时加载统计数据
 onMounted(() => {

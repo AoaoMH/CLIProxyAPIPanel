@@ -23,7 +23,7 @@
                 />
                 <button
                   type="button"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground motion-transition"
                   @click="showKey = !showKey"
                 >
                   <EyeOff v-if="showKey" class="w-4 h-4" />
@@ -111,7 +111,7 @@
                 <span class="text-xs">检查更新中...</span>
               </div>
               <div v-else-if="hasClientUpdate" class="flex items-center gap-2">
-                <span class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                <span class="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/25 dark:text-orange-300 px-2 py-1 rounded">
                   有新版本 {{ latestClientVersion }}
                 </span>
                 <Button 
@@ -134,7 +134,7 @@
                 <Loader2 class="w-3 h-3 animate-spin mr-1" />
                 <span class="text-xs">检查更新中...</span>
               </div>
-              <span v-else-if="hasServerUpdate" class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+              <span v-else-if="hasServerUpdate" class="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/25 dark:text-orange-300 px-2 py-1 rounded">
                 有新版本 {{ latestServerVersion }}
               </span>
             </div>

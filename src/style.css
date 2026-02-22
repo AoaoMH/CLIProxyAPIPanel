@@ -143,6 +143,13 @@
     --shell-border: rgba(61, 57, 41, 0.16);
     --shell-shadow: 0 25px 65px rgba(201, 100, 66, 0.18);
     --shell-sidebar-shadow: 0 45px 95px rgba(61, 57, 41, 0.12);
+
+    /* Motion tokens */
+    --motion-fast: 160ms;
+    --motion-normal: 240ms;
+    --motion-emphasis: 320ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   body[theme-mode='light'] {
@@ -276,8 +283,8 @@
     color: var(--color-text);
     letter-spacing: var(--tracking-normal);
     transition:
-      background-color 0.35s ease,
-      color 0.35s ease;
+      background-color var(--motion-emphasis) var(--ease-standard),
+      color var(--motion-emphasis) var(--ease-standard);
   }
 
   * {
@@ -305,7 +312,11 @@
 }
 
 .assistant-tab * {
-  transition: all 0.3s ease-in-out !important;
+  transition:
+    color var(--motion-normal) var(--ease-standard),
+    background-color var(--motion-normal) var(--ease-standard),
+    border-color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-normal) var(--ease-standard) !important;
 }
 
 .ant-avatar {
@@ -380,7 +391,7 @@ pre {
 .inputbar-container {
   background-color: var(--color-background-soft) !important;
   filter: drop-shadow(0 0 1.25rem hsl(0 0% 0% / 3.5%));
-  transition: all 0.3s ease-in-out;
+  transition: filter var(--motion-normal) var(--ease-standard);
 }
 
 .inputbar-container.focus {
@@ -398,7 +409,9 @@ pre {
 
 .ant-btn,
 .ant-input-outlined {
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    border-color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-normal) var(--ease-standard);
 }
 
 .ant-btn:focus,
@@ -430,7 +443,11 @@ pre {
 
 .ant-dropdown-trigger {
   --color-border: transparent !important;
-  transition: all 0.3s ease-in-out !important;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard) !important;
 }
 
 * {
@@ -441,7 +458,9 @@ pre {
 .ant-switch {
   scale: 0.95;
   background: var(--color-primary-mute) !important;
-  transition: all 0.3s ease-in-out;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
 }
 
 .ant-switch.ant-switch-checked {
@@ -454,7 +473,10 @@ pre {
 
 .ant-select-selector {
   border-color: var(--color-border-soft) !important;
-  transition: all 0.3s ease-in-out;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
 }
 
 .ant-select-selector:hover {
@@ -530,7 +552,10 @@ pre {
 }
 
 #app-sidebar div {
-  transition: all 0.1s ease-in-out !important;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard) !important;
 }
 
 #app-sidebar div.active {
@@ -994,7 +1019,9 @@ body[theme-mode='dark'] .literary-annotation {
 
   .sidebar-nav-enter-active,
   .sidebar-nav-leave-active {
-    transition: all 0.18s ease;
+    transition:
+      opacity var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
   }
 
   .sidebar-nav-enter-from,
@@ -1004,7 +1031,27 @@ body[theme-mode='dark'] .literary-annotation {
   }
 
   .sidebar-nav-move {
-    transition: transform 0.18s ease;
+    transition: transform var(--motion-fast) var(--ease-standard);
+  }
+
+  .motion-transition {
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   .sidebar-nav__label {

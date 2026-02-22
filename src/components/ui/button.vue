@@ -31,17 +31,17 @@ const props = withDefaults(defineProps<Props>(), {
 
 const buttonClass = computed(() => {
   const baseClass =
-    'inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-all duration-200 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]'
+    'inline-flex items-center justify-center rounded-xl text-sm font-semibold motion-transition ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.99]'
 
   const variantClasses = {
-    default: 'bg-primary text-white hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5',
-    destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/85 hover:shadow-lg hover:shadow-destructive/25 hover:-translate-y-0.5',
+    default: 'bg-primary text-white hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 hover:-translate-y-px',
+    destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/85 hover:shadow-md hover:shadow-destructive/20 hover:-translate-y-px',
     outline:
-      'border border-border/60 bg-card/60 text-foreground hover:border-primary/60 hover:text-primary hover:bg-primary/10 hover:shadow-md hover:-translate-y-0.5 backdrop-blur transition-all',
+      'border border-border/60 bg-card/60 text-foreground hover:border-primary/60 hover:text-primary hover:bg-primary/10 hover:shadow-sm hover:-translate-y-px backdrop-blur',
     secondary:
-      'bg-secondary text-secondary-foreground shadow-inner hover:bg-secondary/80 hover:shadow-md hover:-translate-y-0.5',
-    ghost: 'hover:bg-accent/80 hover:text-accent-foreground hover:shadow-md hover:-translate-y-0.5 hover:backdrop-blur-sm',
-    link: 'text-primary underline-offset-4 hover:underline hover:-translate-y-0.5',
+      'bg-secondary text-secondary-foreground shadow-inner hover:bg-secondary/80 hover:shadow-sm hover:-translate-y-px',
+    ghost: 'hover:bg-accent/80 hover:text-accent-foreground hover:shadow-sm hover:-translate-y-px hover:backdrop-blur-sm',
+    link: 'text-primary underline-offset-4 hover:underline',
   }
 
   const sizeClasses = {

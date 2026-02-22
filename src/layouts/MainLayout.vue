@@ -33,7 +33,7 @@
       <div class="shrink-0 flex items-center px-6 h-20">
         <RouterLink
           to="/dashboard"
-          class="flex items-center gap-3 group transition-opacity hover:opacity-80"
+          class="flex items-center gap-3 group motion-transition hover:opacity-80"
         >
           <div class="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
             <Server class="w-5 h-5 text-primary" />
@@ -57,12 +57,12 @@
 
       <!-- FOOTER (Connection Info) -->
       <div class="p-4 border-t border-[#3d3929]/5 dark:border-white/5 bg-[#faf9f5]/50 dark:bg-[#1e1c19]/50 backdrop-blur-sm">
-        <div class="flex items-center justify-between p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-200">
+        <div class="flex items-center justify-between p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 motion-transition">
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-8 h-8 rounded-full border border-black/5 flex items-center justify-center shrink-0 shadow-sm"
               :class="authStore.isConnected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'"
             >
-              <div class="w-2 h-2 rounded-full animate-pulse"
+              <div class="w-2 h-2 rounded-full motion-safe:animate-pulse"
                 :class="authStore.isConnected ? 'bg-green-500' : 'bg-red-500'"
               />
             </div>
@@ -79,13 +79,13 @@
           <div class="flex items-center gap-1">
             <RouterLink
               to="/settings"
-              class="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              class="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground motion-transition"
               title="设置"
             >
               <Settings class="w-4 h-4" />
             </RouterLink>
             <button
-              class="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              class="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 motion-transition"
               title="断开连接"
               @click="handleDisconnect"
             >
@@ -98,7 +98,7 @@
 
     <template #header>
       <!-- Mobile Header -->
-      <header class="lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-[#cc785c]/10 dark:border-[rgba(227,224,211,0.12)] bg-[#fafaf7]/90 dark:bg-[#191714]/95 backdrop-blur-xl transition-all">
+      <header class="lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border/70 bg-background/95 text-foreground backdrop-blur-xl motion-transition">
         <div class="mx-auto max-w-7xl px-6 py-4">
           <div class="flex items-center justify-between">
             <!-- Logo & Brand -->
@@ -120,7 +120,7 @@
             <!-- Right Actions -->
             <div class="flex items-center gap-3">
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 motion-transition"
                 :title="themeMode === 'system' ? '跟随系统' : themeMode === 'dark' ? '深色模式' : '浅色模式'"
                 @click="toggleDarkMode"
               >
@@ -138,15 +138,15 @@
                 />
               </button>
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 motion-transition"
                 @click="mobileMenuOpen = !mobileMenuOpen"
               >
                 <div class="relative w-5 h-5">
                   <Transition
-                    enter-active-class="transition-all duration-200 ease-out"
+                    enter-active-class="motion-transition"
                     enter-from-class="opacity-0 rotate-90 scale-75"
                     enter-to-class="opacity-100 rotate-0 scale-100"
-                    leave-active-class="transition-all duration-150 ease-in absolute inset-0"
+                    leave-active-class="motion-transition absolute inset-0"
                     leave-from-class="opacity-100 rotate-0 scale-100"
                     leave-to-class="opacity-0 -rotate-90 scale-75"
                     mode="out-in"
@@ -168,16 +168,16 @@
 
         <!-- Mobile Dropdown Menu -->
         <Transition
-          enter-active-class="transition-all duration-300 ease-out overflow-hidden"
+          enter-active-class="motion-transition overflow-hidden"
           enter-from-class="opacity-0 max-h-0"
           enter-to-class="opacity-100 max-h-[500px]"
-          leave-active-class="transition-all duration-200 ease-in overflow-hidden"
+          leave-active-class="motion-transition overflow-hidden"
           leave-from-class="opacity-100 max-h-[500px]"
           leave-to-class="opacity-0 max-h-0"
         >
           <div
             v-if="mobileMenuOpen"
-            class="border-t border-[#cc785c]/10 dark:border-[rgba(227,224,211,0.12)] bg-[#fafaf7]/95 dark:bg-[#191714]/98 backdrop-blur-xl"
+            class="border-t border-border/70 bg-background text-foreground backdrop-blur-xl"
           >
             <div class="mx-auto max-w-7xl px-6 py-4">
               <!-- Navigation Groups -->
@@ -197,7 +197,7 @@
                       v-for="item in group.items"
                       :key="item.href"
                       :to="item.href"
-                      class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+                      class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium motion-transition"
                       :class="isNavActive(item.href)
                         ? 'bg-[#cc785c]/10 dark:bg-[#cc785c]/20 text-[#cc785c] dark:text-[#d4a27f]'
                         : 'text-[#666663] dark:text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-[#191919] dark:hover:text-white'"
@@ -241,13 +241,13 @@
                   <div class="flex items-center gap-1">
                     <RouterLink
                       to="/settings"
-                      class="p-2 hover:bg-muted/50 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                      class="p-2 hover:bg-muted/50 rounded-lg text-muted-foreground hover:text-foreground motion-transition"
                       @click="mobileMenuOpen = false"
                     >
                       <Settings class="w-4 h-4" />
                     </RouterLink>
                     <button
-                      class="p-2 rounded-lg text-muted-foreground hover:text-red-500 transition-colors"
+                      class="p-2 rounded-lg text-muted-foreground hover:text-red-500 motion-transition"
                       @click="handleDisconnect"
                     >
                       <LogOut class="w-4 h-4" />

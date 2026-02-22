@@ -10,7 +10,7 @@ const props = defineProps<Props>()
 
 const rowClass = computed(() =>
   cn(
-    'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+    'border-b motion-transition hover:bg-muted/40 data-[state=selected]:bg-muted/70',
     props.class
   )
 )

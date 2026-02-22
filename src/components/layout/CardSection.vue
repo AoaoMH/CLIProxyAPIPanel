@@ -61,7 +61,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const cardClasses = computed(() => {
-  const classes = ['transition-all duration-300']
+  const classes = ['motion-transition']
 
   if (props.variant === 'elevated') {
     classes.push('shadow-md')
@@ -70,7 +70,7 @@ const cardClasses = computed(() => {
   }
 
   if (props.interactive) {
-    classes.push('hover:shadow-xl hover:-translate-y-1 cursor-pointer hover:border-primary/40 active:scale-[0.99]')
+    classes.push('hover:shadow-lg hover:-translate-y-px cursor-pointer hover:border-primary/35 active:scale-[0.995]')
   }
 
   return classes.join(' ')

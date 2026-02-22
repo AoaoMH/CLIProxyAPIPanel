@@ -29,6 +29,7 @@ export type StatusBlockState = 'success' | 'failure' | 'mixed' | 'idle'
  */
 export interface StatusBarData {
   blocks: StatusBlockState[]
+  blockStats: Array<{ success: number; failure: number; successRate: number }>
   successRate: number
   totalSuccess: number
   totalFailure: number
@@ -240,12 +241,22 @@ function calculateStatusBarData(
     return 'success'
   })
 
+  const blockStatsWithRate = blockStats.map((stat) => {
+    const total = stat.success + stat.failure
+    return {
+      success: stat.success,
+      failure: stat.failure,
+      successRate: total > 0 ? (stat.success / total) * 100 : 100
+    }
+  })
+
   // Calculate success rate
   const total = totalSuccess + totalFailure
   const successRate = total > 0 ? (totalSuccess / total) * 100 : 100
 
   return {
     blocks,
+    blockStats: blockStatsWithRate,
     successRate,
     totalSuccess,
     totalFailure
@@ -347,6 +358,7 @@ export const useAuthStatsStore = defineStore('authStats', () => {
     if (!key || usageDetails.value.length === 0) {
       return {
         blocks: new Array(STATUS_BLOCK_COUNT).fill('idle') as StatusBlockState[],
+        blockStats: Array.from({ length: STATUS_BLOCK_COUNT }, () => ({ success: 0, failure: 0, successRate: 100 })),
         successRate: 100,
         totalSuccess: 0,
         totalFailure: 0
@@ -360,6 +372,7 @@ export const useAuthStatsStore = defineStore('authStats', () => {
     if (!key || usageDetails.value.length === 0) {
       return {
         blocks: new Array(STATUS_BLOCK_COUNT).fill('idle') as StatusBlockState[],
+        blockStats: Array.from({ length: STATUS_BLOCK_COUNT }, () => ({ success: 0, failure: 0, successRate: 100 })),
         successRate: 100,
         totalSuccess: 0,
         totalFailure: 0

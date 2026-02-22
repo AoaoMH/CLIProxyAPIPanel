@@ -9,7 +9,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const cellClass = computed(() =>
-  cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', props.class)
+  cn('p-4 align-middle text-foreground [&:has([role=checkbox])]:pr-0', props.class)
 )
 </script>
 

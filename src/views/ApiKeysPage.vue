@@ -93,13 +93,13 @@
                 <TableHead class="w-[200px] h-12 font-semibold">
                   密钥信息
                 </TableHead>
-                <TableHead class="w-[100px] h-12 font-semibold text-center">
+                <TableHead class="w-[100px] h-12 font-semibold text-right">
                   使用次数
                 </TableHead>
                 <TableHead class="w-[150px] h-12 font-semibold">
                   最近使用
                 </TableHead>
-                <TableHead class="w-[150px] h-12 font-semibold text-center">
+                <TableHead class="w-[150px] h-12 font-semibold text-right">
                   Token消耗
                 </TableHead>
                 <TableHead class="w-[130px] h-12 font-semibold text-center">
@@ -111,7 +111,7 @@
               <TableRow
                 v-for="(apiKey, index) in filteredApiKeys"
                 :key="apiKey.id"
-                class="border-b border-border/40 hover:bg-muted/30 transition-colors"
+                class="border-b border-border/40 hover:bg-muted/30"
               >
                 <TableCell class="py-4 text-center">
                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary mx-auto">
@@ -136,7 +136,7 @@
                     </div>
                   </div>
                 </TableCell>
-                <TableCell class="py-4 text-center">
+                <TableCell class="py-4 text-right">
                   <span class="font-medium text-foreground">
                     {{ apiKey.usageCount.toLocaleString() }}
                   </span>
@@ -151,8 +151,8 @@
                     </span>
                   </div>
                 </TableCell>
-                <TableCell class="py-4 text-center">
-                  <div class="text-xs">
+                <TableCell class="py-4 text-right">
+                  <div class="text-xs font-mono tabular-nums">
                     <div v-if="apiKey.inputTokens || apiKey.outputTokens">
                       <span class="text-green-600 dark:text-green-400">{{ formatTokenCount(apiKey.inputTokens) }}</span>
                       <span class="text-muted-foreground mx-1">/</span>
@@ -195,7 +195,7 @@
           <div
             v-for="(apiKey, index) in filteredApiKeys"
             :key="apiKey.id"
-            class="p-4 sm:p-5 hover:bg-muted/30 transition-colors"
+            class="p-4 sm:p-5 hover:bg-muted/30 motion-transition"
           >
             <div class="space-y-4">
               <div class="flex items-start justify-between gap-3">
@@ -225,7 +225,7 @@
                   <div class="text-muted-foreground mb-0 xs:mb-1">
                     使用次数
                   </div>
-                  <div class="font-semibold">
+                  <div class="font-semibold font-mono tabular-nums">
                     {{ apiKey.usageCount.toLocaleString() }}
                   </div>
                 </div>
@@ -241,7 +241,7 @@
                   <div class="text-muted-foreground mb-0 xs:mb-1">
                     Token消耗
                   </div>
-                  <div class="font-semibold">
+                  <div class="font-semibold font-mono tabular-nums text-right">
                     <span v-if="apiKey.inputTokens || apiKey.outputTokens">
                       <span class="text-green-600 dark:text-green-400">{{ formatTokenCount(apiKey.inputTokens) }}</span>
                       <span class="text-muted-foreground">/</span>
