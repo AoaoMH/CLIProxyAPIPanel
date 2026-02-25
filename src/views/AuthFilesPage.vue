@@ -1,5 +1,14 @@
 <template>
   <PageContainer>
+    <!-- Page Error Banner (prevents blank screen on failures) -->
+    <div v-if="pageError" class="mb-4 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm">
+      <div class="font-medium text-destructive">请求失败</div>
+      <div class="mt-1 text-destructive/90 break-all">{{ pageError }}</div>
+      <div class="mt-2 text-xs text-muted-foreground">
+        如果是 Codex 凭证显示 <code class="font-mono">token_invalidated</code> / 401，请重新登录后再刷新。
+      </div>
+    </div>
+
     <!-- 操作区域 -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
       <div class="relative">
@@ -126,6 +135,8 @@
         :files="searchFilteredFiles(codexFiles)"
         :section-class="'bg-gradient-to-b from-amber-50/10 to-transparent dark:from-amber-900/10'"
         :toggling-map="authFileToggling"
+        :show-remove-invalid-action="true"
+        :remove-invalid-loading="removingInvalidCodex"
         @download="downloadFile"
         @delete="deleteFile"
         @show-models="showModelsModal"
@@ -133,6 +144,7 @@
         @edit="openEditModal"
         @refresh="handleSectionRefresh"
         @toggle-disabled="toggleAuthFileDisabled"
+        @remove-invalid="removeInvalidCodexCredentials"
       />
 
       <!-- Gemini CLI Section -->
@@ -298,6 +310,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, provide, reactive } from 'vue'
 import { apiClient } from '@/api/client'
+import { apiCallApi, getApiCallErrorMessage } from '@/api/apiCall'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
 import { useQuotaStore } from '@/stores/quota'
@@ -310,6 +323,12 @@ import Dialog from '@/components/ui/dialog/Dialog.vue'
 import Input from '@/components/ui/input.vue'
 import AuthFileSection from '@/components/auth/AuthFileSection.vue'
 import type { AuthFileItem, AuthFilesResponse } from '@/types'
+import {
+  CODEX_REQUEST_HEADERS,
+  CODEX_USAGE_URL,
+  normalizeAuthIndexValue,
+  resolveCodexChatgptAccountId,
+} from '@/utils/quota'
 import {
   FileText,
   Upload,
@@ -331,6 +350,10 @@ const fileInput = ref<HTMLInputElement>()
 const searchQuery = ref('')
 const currentFilter = ref('all')
 const authFileToggling = ref<Record<string, boolean>>({})
+const removingInvalidCodex = ref(false)
+
+// Page-level error (keep UI visible even when API calls fail)
+const pageError = ref<string | null>(null)
 
 // Models modal state
 const modelsModalOpen = ref(false)
@@ -454,11 +477,14 @@ function triggerUpload() {
 
 async function fetchFiles() {
   loading.value = true
+  pageError.value = null
   try {
     const data = await apiClient.get<AuthFilesResponse>('/auth-files')
     files.value = data.files || []
-  } catch {
-    toast({ title: '加载认证文件失败', variant: 'destructive' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '加载认证文件失败'
+    pageError.value = message
+    toast({ title: '加载认证文件失败', description: message, variant: 'destructive' })
   } finally {
     loading.value = false
   }
@@ -476,8 +502,9 @@ async function handleFileUpload(event: Event) {
     await apiClient.postForm('/auth-files', formData)
     toast({ title: '文件上传成功' })
     await fetchFiles()
-  } catch {
-    toast({ title: '上传文件失败', variant: 'destructive' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '上传文件失败'
+    toast({ title: '上传文件失败', description: message, variant: 'destructive' })
   } finally {
     input.value = ''
   }
@@ -493,8 +520,9 @@ async function downloadFile(name: string) {
     a.download = name
     a.click()
     URL.revokeObjectURL(url)
-  } catch {
-    toast({ title: '下载文件失败', variant: 'destructive' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '下载文件失败'
+    toast({ title: '下载文件失败', description: message, variant: 'destructive' })
   }
 }
 
@@ -505,8 +533,104 @@ async function deleteFile(name: string) {
     await apiClient.delete(`/auth-files?name=${encodeURIComponent(name)}`)
     toast({ title: '文件已删除' })
     await fetchFiles()
-  } catch {
-    toast({ title: '删除文件失败', variant: 'destructive' })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '删除文件失败'
+    toast({ title: '删除文件失败', description: message, variant: 'destructive' })
+  }
+}
+
+async function removeInvalidCodexCredentials(sectionFiles: AuthFileItem[]) {
+  if (removingInvalidCodex.value) return
+
+  const codexTargets = sectionFiles.filter((f) => (f.type || '').toLowerCase() === 'codex')
+  if (codexTargets.length === 0) {
+    toast({ title: '当前分组没有可处理的 Codex 凭证' })
+    return
+  }
+
+  if (!confirm(`将校验 ${codexTargets.length} 个 Codex 凭证，并批量删除失效项，是否继续？`)) return
+
+  removingInvalidCodex.value = true
+  try {
+    const validationResults = await Promise.all(
+      codexTargets.map(async (file) => {
+        const rawAuthIndex = file.authIndex ?? (file as Record<string, unknown>)['auth_index']
+        const authIndex = normalizeAuthIndexValue(rawAuthIndex)
+        const accountId = resolveCodexChatgptAccountId(file)
+
+        if (!authIndex) {
+          return { file, valid: false as const, reason: '缺少认证索引' }
+        }
+        if (!accountId) {
+          return { file, valid: false as const, reason: '缺少 ChatGPT 账户 ID' }
+        }
+
+        try {
+          // 使用 Codex 配额接口做校验（与“刷新配额”一致）：报错则记录为失效
+          const response = await apiCallApi.request({
+            authIndex,
+            method: 'GET',
+            url: CODEX_USAGE_URL,
+            header: {
+              ...CODEX_REQUEST_HEADERS,
+              'Chatgpt-Account-Id': accountId,
+            },
+          })
+
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            return {
+              file,
+              valid: false as const,
+              reason: getApiCallErrorMessage(response),
+            }
+          }
+
+          return { file, valid: true as const }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : '校验失败'
+          return { file, valid: false as const, reason: message }
+        }
+      })
+    )
+
+    const invalidItems = validationResults.filter((item) => !item.valid)
+
+    if (invalidItems.length === 0) {
+      toast({ title: `校验完成：${codexTargets.length} 个凭证均有效` })
+      return
+    }
+
+    const deleteResults = await Promise.allSettled(
+      invalidItems.map((item) =>
+        apiClient.delete(`/auth-files?name=${encodeURIComponent(item.file.name)}`)
+      )
+    )
+
+    const deleted = deleteResults.filter((r) => r.status === 'fulfilled').length
+    const deleteFailed = deleteResults.length - deleted
+    const invalidPreview = invalidItems
+      .slice(0, 3)
+      .map((item) => `${item.file.name}${item.reason ? `（${item.reason}）` : ''}`)
+      .join('、')
+
+    if (deleted > 0) {
+      toast({
+        title: `已删除 ${deleted} 个失效 Codex 凭证`,
+        description: invalidPreview
+          ? `校验失败示例：${invalidPreview}${invalidItems.length > 3 ? '…' : ''}`
+          : undefined,
+      })
+      await fetchFiles()
+    }
+
+    if (deleteFailed > 0) {
+      toast({
+        title: `有 ${deleteFailed} 个失效凭证删除失败`,
+        variant: 'destructive',
+      })
+    }
+  } finally {
+    removingInvalidCodex.value = false
   }
 }
 

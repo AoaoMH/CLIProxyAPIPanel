@@ -41,6 +41,20 @@
         >
           <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': refreshing }" />
         </Button>
+
+        <template v-if="showRemoveInvalidAction">
+          <div class="h-5 w-px bg-border/80" aria-hidden="true" />
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="removeInvalidLoading"
+            @click="emit('remove-invalid', props.files)"
+            class="text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-200"
+          >
+            <RefreshCw v-if="removeInvalidLoading" class="h-4 w-4 mr-1 animate-spin" />
+            移除失效凭证
+          </Button>
+        </template>
       </div>
     </div>
 
@@ -105,6 +119,8 @@ const props = defineProps<{
   files: AuthFileItem[]
   sectionClass?: string
   togglingMap?: Record<string, boolean>
+  showRemoveInvalidAction?: boolean
+  removeInvalidLoading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -115,6 +131,7 @@ const emit = defineEmits<{
   (e: 'edit', file: AuthFileItem): void
   (e: 'refresh', files: AuthFileItem[]): void
   (e: 'toggle-disabled', payload: { file: AuthFileItem; disabled: boolean }): void
+  (e: 'remove-invalid', files: AuthFileItem[]): void
 }>()
 
 const viewMode = ref<'paged' | 'all'>('paged')

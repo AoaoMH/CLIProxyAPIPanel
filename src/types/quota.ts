@@ -156,8 +156,21 @@ export interface ApiCallRequest {
 }
 
 export interface ApiCallResponse {
+  /** Normalized HTTP status code for the upstream request. */
   statusCode: number
+  /** Raw upstream response body (object if already parsed). */
   body?: unknown
+  /** Raw upstream response body as text (if available). */
   bodyText?: string
+  /** Proxy-side error string (if the /api-call endpoint failed). */
   error?: string
+
+  /**
+   * Compatibility fields (some backend versions use snake_case or different property names).
+   * These are NOT relied upon directly; callers should normalize via src/api/apiCall.ts.
+   */
+  status_code?: number
+  body_text?: string
+  header?: Record<string, unknown>
+  headers?: Record<string, unknown>
 }
