@@ -34,6 +34,7 @@
         ref="fileInput"
         type="file"
         accept=".json"
+        multiple
         class="hidden"
         @change="handleFileUpload"
       />
@@ -338,6 +339,7 @@ import {
   Trash2
 } from 'lucide-vue-next'
 import { formatUnixTimestamp, formatDateOnly } from '@/utils/format'
+import { MAX_AUTH_FILE_SIZE } from '@/utils/constants'
 
 const { toast } = useToast()
 const { copy } = useClipboard()
@@ -492,22 +494,83 @@ async function fetchFiles() {
 
 async function handleFileUpload(event: Event) {
   const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
 
-  const formData = new FormData()
-  formData.append('file', file)
+  const list = input.files ? Array.from(input.files) : []
+  if (list.length === 0) return
 
-  try {
-    await apiClient.postForm('/auth-files', formData)
-    toast({ title: '文件上传成功' })
-    await fetchFiles()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '上传文件失败'
-    toast({ title: '上传文件失败', description: message, variant: 'destructive' })
-  } finally {
-    input.value = ''
+  const valid: File[] = []
+  const invalidNames: string[] = []
+  const oversizedNames: string[] = []
+
+  // Basic client-side validation to reduce accidental uploads.
+  for (const file of list) {
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      invalidNames.push(file.name)
+      continue
+    }
+    if (file.size > MAX_AUTH_FILE_SIZE) {
+      oversizedNames.push(file.name)
+      continue
+    }
+    valid.push(file)
   }
+
+  if (invalidNames.length > 0) {
+    toast({
+      title: '仅支持 JSON 文件',
+      description: invalidNames.slice(0, 5).join('、') + (invalidNames.length > 5 ? '…' : ''),
+      variant: 'destructive'
+    })
+  }
+
+  if (oversizedNames.length > 0) {
+    toast({
+      title: '文件过大',
+      description: `单个文件最大 ${Math.round(MAX_AUTH_FILE_SIZE / (1024 * 1024))}MB：${oversizedNames.slice(0, 3).join('、')}${oversizedNames.length > 3 ? '…' : ''}`,
+      variant: 'destructive'
+    })
+  }
+
+  if (valid.length === 0) {
+    input.value = ''
+    return
+  }
+
+  let success = 0
+  const failed: { name: string; message: string }[] = []
+
+  // The backend endpoint is single-file. Batch upload is achieved by looping.
+  for (const file of valid) {
+    const formData = new FormData()
+    formData.append('file', file, file.name)
+    try {
+      await apiClient.postForm('/auth-files', formData)
+      success++
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '上传失败'
+      failed.push({ name: file.name, message })
+    }
+  }
+
+  if (success > 0) {
+    const suffix = valid.length > 1 ? `（${success}/${valid.length}）` : ''
+    toast({ title: `文件上传成功${suffix}`, variant: failed.length ? 'warning' : 'default' })
+    await fetchFiles()
+  }
+
+  if (failed.length > 0) {
+    const preview = failed
+      .slice(0, 3)
+      .map((item) => `${item.name}: ${item.message}`)
+      .join('；')
+    toast({
+      title: `有 ${failed.length} 个文件上传失败`,
+      description: preview + (failed.length > 3 ? '…' : ''),
+      variant: 'destructive'
+    })
+  }
+
+  input.value = ''
 }
 
 async function downloadFile(name: string) {
