@@ -256,6 +256,7 @@ import {
   Sparkles,
   Code,
   Cpu,
+  Key,
   Zap,
   Cloud,
   ExternalLink,
@@ -358,6 +359,14 @@ const providers: OAuthProvider[] = [
     endpoint: '/antigravity-auth-url',
     icon: markRaw(Zap),
     supportsCallback: true,
+  },
+  {
+    id: 'kimi',
+    name: 'Kimi Code',
+    description: 'Kimi 编程模型',
+    endpoint: '/kimi-auth-url',
+    icon: markRaw(Key),
+    supportsCallback: false,
   },
   {
     id: 'qwen',
