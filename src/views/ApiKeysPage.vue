@@ -369,7 +369,7 @@ import {
   Search,
   SquarePen,
 } from 'lucide-vue-next'
-import type { ApiKeyEntry, ApiKeyInfo } from '@/types'
+import type { ApiKeyEntry, ApiKeyInfo, RawApiKey } from '@/types'
 import { formatDate } from '@/utils/format'
 
 const { toast } = useToast()
@@ -468,9 +468,40 @@ function clearFilters() {
 async function fetchKeys() {
   loading.value = true
   try {
-    const data = await apiClient.get<{ 'api-keys'?: ApiKeyEntry[] }>('/api-keys')
-    const keys = data?.['api-keys'] ?? []
-    rawApiKeys.value = Array.isArray(keys) ? keys : []
+    try {
+      const usageData = await apiClient.get<{ 'api-keys'?: ApiKeyEntry[] }>('/api-keys/usage')
+      const keys = usageData?.['api-keys'] ?? []
+      rawApiKeys.value = Array.isArray(keys) ? keys : []
+      return
+    } catch {
+      // Backward-compatible fallback: legacy endpoint may return string[]
+      const data = await apiClient.get<{ 'api-keys'?: RawApiKey[] }>('/api-keys')
+      const keys = data?.['api-keys'] ?? []
+      if (!Array.isArray(keys)) {
+        rawApiKeys.value = []
+        return
+      }
+      rawApiKeys.value = keys
+        .map((item) => {
+          if (typeof item === 'string') {
+            return {
+              'api-key': item,
+              'is-active': true,
+            } as ApiKeyEntry
+          }
+          if (item && typeof item === 'object') {
+            const key = item['api-key'] || ''
+            if (!key) return null
+            return {
+              ...item,
+              'api-key': key,
+              'is-active': item['is-active'] ?? true,
+            } as ApiKeyEntry
+          }
+          return null
+        })
+        .filter((item): item is ApiKeyEntry => item !== null)
+    }
   } catch {
     toast({ title: '加载 API 密钥失败', variant: 'destructive' })
   } finally {
@@ -524,9 +555,12 @@ async function handleSave() {
 
   try {
     if (isEditing.value && editingApiKey.value) {
-      // 更新密钥 - 使用 PATCH 接口，通过 ID 定位
-      const patchPayload: Record<string, string> = {
-        id: editingApiKey.value.id
+      // 更新密钥 - 优先通过 ID 定位；无 ID 时退化到 key 定位
+      const patchPayload: Record<string, string> = {}
+      if (editingApiKey.value.id) {
+        patchPayload.id = editingApiKey.value.id
+      } else {
+        patchPayload.key = editingApiKey.value.key
       }
       
       // 如果密钥值变了
@@ -573,11 +607,15 @@ async function executeDelete() {
   if (!deleteTargetKey.value) return
   
   const id = deleteTargetKey.value.id
-  deletingId.value = id
+  deletingId.value = id || deleteTargetKey.value.key
   showDeleteConfirm.value = false
 
   try {
-    await apiClient.delete(`/api-keys?id=${encodeURIComponent(id)}`)
+    if (id) {
+      await apiClient.delete(`/api-keys?id=${encodeURIComponent(id)}`)
+    } else {
+      await apiClient.delete(`/api-keys?value=${encodeURIComponent(deleteTargetKey.value.key)}`)
+    }
     toast({ title: 'API 密钥已删除' })
     await fetchKeys()
   } catch {
