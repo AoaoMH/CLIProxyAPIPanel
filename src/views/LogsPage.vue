@@ -339,6 +339,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, watchEffect, nextTick } from 'vue'
 import { apiClient } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import CardSection from '@/components/layout/CardSection.vue'
 import Button from '@/components/ui/button.vue'
@@ -422,6 +423,7 @@ const HTTP_STATUS_PATTERNS: RegExp[] = [
 ]
 
 const { toast } = useToast()
+const { confirmDanger } = useConfirm()
 
 // State
 const activeTab = ref<TabType>('logs')
@@ -796,7 +798,7 @@ async function fetchLogs(incremental = false) {
 }
 
 async function clearLogs() {
-  if (!window.confirm('确定要清空所有日志吗？')) return
+  if (!await confirmDanger('确定要清空所有日志吗？')) return
   try {
     await apiClient.delete('/logs')
     logState.value = { buffer: [], visibleFrom: 0 }

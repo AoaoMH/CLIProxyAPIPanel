@@ -268,6 +268,18 @@
 
         <div v-else class="space-y-4">
           <div class="space-y-1">
+            <label class="text-sm font-medium text-foreground mb-1 block">Name（可选）</label>
+            <Input
+              v-model="editModal.form.name"
+              placeholder="my-account"
+              :disabled="editModal.saving"
+            />
+            <div class="text-xs text-muted-foreground">
+              写入字段：<code class="font-mono">name</code>
+            </div>
+          </div>
+
+          <div class="space-y-1">
             <label class="text-sm font-medium text-foreground mb-1 block">Proxy URL（可选）</label>
             <Input
               v-model="editModal.form.proxyUrl"
@@ -313,6 +325,7 @@ import { ref, computed, onMounted, provide, reactive } from 'vue'
 import { apiClient } from '@/api/client'
 import { apiCallApi, getApiCallErrorMessage } from '@/api/apiCall'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import { useClipboard } from '@/composables/useClipboard'
 import { useQuotaStore } from '@/stores/quota'
 import { useAuthStatsStore } from '@/stores/authStats'
@@ -342,6 +355,7 @@ import { formatUnixTimestamp, formatDateOnly } from '@/utils/format'
 import { MAX_AUTH_FILE_SIZE } from '@/utils/constants'
 
 const { toast } = useToast()
+const { confirmDanger, confirmWarning } = useConfirm()
 const { copy } = useClipboard()
 const quotaStore = useQuotaStore()
 const authStatsStore = useAuthStatsStore()
@@ -377,6 +391,7 @@ const editModal = reactive({
   target: null as AuthFileItem | null,
   original: null as Record<string, any> | null,
   form: {
+    name: '',
     proxyUrl: '',
     prefix: ''
   }
@@ -398,8 +413,8 @@ async function handleSectionRefresh(filesToRefresh: AuthFileItem[]) {
 }
 
 // Clear all quota states
-const clearAllQuotaStates = () => {
-  if (confirm('确定要清除所有配额信息吗？这将重置所有已加载的配额状态。')) {
+const clearAllQuotaStates = async () => {
+  if (await confirmWarning('确定要清除所有配额信息吗？这将重置所有已加载的配额状态。')) {
     quotaStore.clearAllStates()
     toast({ title: '已清除所有配额信息' })
   }
@@ -590,7 +605,7 @@ async function downloadFile(name: string) {
 }
 
 async function deleteFile(name: string) {
-  if (!confirm(`确定要删除 ${name} 吗？`)) return
+  if (!await confirmDanger(`确定要删除 ${name} 吗？`)) return
   
   try {
     await apiClient.delete(`/auth-files?name=${encodeURIComponent(name)}`)
@@ -611,7 +626,7 @@ async function removeInvalidCodexCredentials(sectionFiles: AuthFileItem[]) {
     return
   }
 
-  if (!confirm(`将校验 ${codexTargets.length} 个 Codex 凭证，并批量删除失效项，是否继续？`)) return
+  if (!await confirmWarning(`将校验 ${codexTargets.length} 个 Codex 凭证，并批量删除失效项，是否继续？`)) return
 
   removingInvalidCodex.value = true
   try {
@@ -789,6 +804,7 @@ async function openEditModal(file: AuthFileItem) {
   editModal.error = ''
   editModal.target = file
   editModal.original = null
+  editModal.form.name = (file as any).name ?? ''
   editModal.form.proxyUrl = (file as any).proxy_url ?? (file as any).proxyUrl ?? ''
   editModal.form.prefix = (file as any).prefix ?? ''
 
@@ -799,6 +815,7 @@ async function openEditModal(file: AuthFileItem) {
       throw new Error('无法解析凭证文件内容')
     }
     editModal.original = json
+    editModal.form.name = typeof json.name === 'string' ? json.name : ''
     editModal.form.proxyUrl = typeof json.proxy_url === 'string' ? json.proxy_url : ''
     editModal.form.prefix = typeof json.prefix === 'string' ? json.prefix : ''
   } catch (err) {
@@ -815,6 +832,7 @@ function closeEditModal() {
   editModal.error = ''
   editModal.target = null
   editModal.original = null
+  editModal.form.name = ''
   editModal.form.proxyUrl = ''
   editModal.form.prefix = ''
 }
@@ -824,6 +842,7 @@ async function saveEditModal() {
   if (editModal.saving) return
 
   const name = editModal.target.name
+  const displayName = editModal.form.name.trim()
   const proxyUrl = editModal.form.proxyUrl.trim()
   const prefixRaw = editModal.form.prefix.trim().replace(/^\/+|\/+$/g, '')
 
@@ -840,6 +859,7 @@ async function saveEditModal() {
     try {
       await apiClient.patch('/auth-files/metadata', {
         name,
+        display_name: displayName,
         proxy_url: proxyUrl,
         prefix: prefixRaw
       })
@@ -852,6 +872,9 @@ async function saveEditModal() {
       // Fallback: download + overwrite file via legacy upload endpoint.
       const response = await apiClient.getRaw(`/auth-files/download?name=${encodeURIComponent(name)}`)
       const json = coerceJsonObject(response.data) || {}
+
+      if (displayName) (json as any).name = displayName
+      else delete (json as any).name
 
       if (proxyUrl) (json as any).proxy_url = proxyUrl
       else delete (json as any).proxy_url

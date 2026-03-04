@@ -54,6 +54,9 @@ const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   payloadDefaultRules: [],
   payloadOverrideRules: [],
   payloadFilterRules: [],
+  payloadDefaultRawRules: [],
+  payloadOverrideRawRules: [],
+  errorLogsMaxFiles: '',
   // New fields default values (Requirements 19.1-19.8)
   streaming: {
     keepaliveSeconds: '',
@@ -325,6 +328,11 @@ export function useVisualConfig() {
         payloadDefaultRules: parsePayloadRules(parsed.payload?.default),
         payloadOverrideRules: parsePayloadRules(parsed.payload?.override),
         payloadFilterRules: parsePayloadFilterRules(parsed.payload?.filter),
+        payloadDefaultRawRules: parsePayloadRules(parsed.payload?.['default-raw']),
+        payloadOverrideRawRules: parsePayloadRules(parsed.payload?.['override-raw']),
+
+        // 错误日志文件数量限制
+        errorLogsMaxFiles: String(parsed['error-logs-max-files'] ?? ''),
 
         // New fields (Requirements 19.1-19.8)
         // Streaming 配置 (Requirement 20.1)
@@ -455,6 +463,11 @@ export function useVisualConfig() {
         parsed,
         'logs-max-total-size-mb',
         values.logsMaxTotalSizeMb,
+      )
+      setIntFromString(
+        parsed,
+        'error-logs-max-files',
+        values.errorLogsMaxFiles,
       )
       setBoolean(
         parsed,
@@ -653,7 +666,9 @@ export function useVisualConfig() {
         hasOwn(parsed, 'payload') ||
         values.payloadDefaultRules.length > 0 ||
         values.payloadOverrideRules.length > 0 ||
-        values.payloadFilterRules.length > 0
+        values.payloadFilterRules.length > 0 ||
+        values.payloadDefaultRawRules.length > 0 ||
+        values.payloadOverrideRawRules.length > 0
       ) {
         const payload = ensureRecord(parsed, 'payload')
         if (values.payloadDefaultRules.length > 0) {
@@ -676,6 +691,20 @@ export function useVisualConfig() {
           )
         } else if (hasOwn(payload, 'filter')) {
           delete payload.filter
+        }
+        if (values.payloadDefaultRawRules.length > 0) {
+          payload['default-raw'] = serializePayloadRulesForYaml(
+            values.payloadDefaultRawRules,
+          )
+        } else if (hasOwn(payload, 'default-raw')) {
+          delete payload['default-raw']
+        }
+        if (values.payloadOverrideRawRules.length > 0) {
+          payload['override-raw'] = serializePayloadRulesForYaml(
+            values.payloadOverrideRawRules,
+          )
+        } else if (hasOwn(payload, 'override-raw')) {
+          delete payload['override-raw']
         }
         deleteIfEmpty(parsed, 'payload')
       }

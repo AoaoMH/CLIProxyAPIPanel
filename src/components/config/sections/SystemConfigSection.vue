@@ -76,6 +76,18 @@
         </div>
 
         <div>
+          <label class="block text-sm font-medium text-foreground mb-2">错误日志最大文件数</label>
+          <Input
+            :model-value="values.errorLogsMaxFiles"
+            type="number"
+            placeholder="10"
+            :disabled="disabled"
+            @update:model-value="updateValue('errorLogsMaxFiles', $event)"
+          />
+          <p class="text-xs text-muted-foreground mt-1">保留的错误日志文件数量，默认 10，0 为不清理</p>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-foreground mb-2">pprof 监听地址</label>
           <Input
             :model-value="values.pprofAddr"
@@ -115,6 +127,7 @@ interface SystemConfigValues {
   usageStatisticsEnabled: boolean
   logsMaxTotalSizeMb: string
   usageRecordsRetentionDays: string
+  errorLogsMaxFiles: string
 }
 
 interface Props {

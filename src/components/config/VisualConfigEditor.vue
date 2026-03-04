@@ -152,7 +152,8 @@ const systemConfigValues = computed(() => ({
   loggingToFile: props.values.loggingToFile,
   usageStatisticsEnabled: props.values.usageStatisticsEnabled,
   logsMaxTotalSizeMb: props.values.logsMaxTotalSizeMb,
-  usageRecordsRetentionDays: props.values.usageRecordsRetentionDays
+  usageRecordsRetentionDays: props.values.usageRecordsRetentionDays,
+  errorLogsMaxFiles: props.values.errorLogsMaxFiles
 }))
 
 const networkConfigValues = computed(() => ({
@@ -193,7 +194,9 @@ const oauthExcludedModelsValues = computed(() => ({
 const payloadConfigValues = computed(() => ({
   payloadDefaultRules: props.values.payloadDefaultRules,
   payloadOverrideRules: props.values.payloadOverrideRules,
-  payloadFilterRules: props.values.payloadFilterRules
+  payloadFilterRules: props.values.payloadFilterRules,
+  payloadDefaultRawRules: props.values.payloadDefaultRawRules,
+  payloadOverrideRawRules: props.values.payloadOverrideRawRules
 }))
 
 // Unified update handler that merges section updates and emits to parent

@@ -220,6 +220,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { apiClient } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import Button from '@/components/ui/button.vue'
 import Checkbox from '@/components/ui/checkbox.vue'
@@ -255,6 +256,7 @@ interface BackupListResponse {
 }
 
 const { toast } = useToast()
+const { confirmDanger } = useConfirm()
 
 const loading = ref(true)
 const creatingBackup = ref(false)
@@ -362,7 +364,7 @@ async function downloadBackup(name: string) {
 }
 
 async function deleteBackup(name: string) {
-  if (!window.confirm(`确定要删除备份 "${name}" 吗？`)) return
+  if (!await confirmDanger(`确定要删除备份 "${name}" 吗？`)) return
   
   try {
     await apiClient.delete(`/backups/${encodeURIComponent(name)}`)

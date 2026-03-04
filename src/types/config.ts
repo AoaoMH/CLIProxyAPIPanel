@@ -239,6 +239,9 @@ export type VisualConfigValues = {
   payloadDefaultRules: PayloadRule[]
   payloadOverrideRules: PayloadRule[]
   payloadFilterRules: PayloadFilterRule[]
+  payloadDefaultRawRules: PayloadRule[]
+  payloadOverrideRawRules: PayloadRule[]
+  errorLogsMaxFiles: string
   // New fields for extended configuration (Requirements 19.1-19.8)
   streaming: StreamingConfig
   geminiApiKeys: ApiKeyEntry[]
@@ -293,6 +296,9 @@ export const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   payloadDefaultRules: [],
   payloadOverrideRules: [],
   payloadFilterRules: [],
+  payloadDefaultRawRules: [],
+  payloadOverrideRawRules: [],
+  errorLogsMaxFiles: '',
   // New fields default values (Requirements 19.1-19.8)
   streaming: {
     keepaliveSeconds: '',

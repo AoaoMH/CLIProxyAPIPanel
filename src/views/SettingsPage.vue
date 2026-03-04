@@ -159,6 +159,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDarkMode } from '@/composables/useDarkMode'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import { apiClient } from '@/api/client'
 import PageContainer from '@/components/layout/PageContainer.vue'
 import CardSection from '@/components/layout/CardSection.vue'
@@ -179,6 +180,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { themeMode, setThemeMode } = useDarkMode()
 const { toast } = useToast()
+const { confirmInfo } = useConfirm()
 
 const showKey = ref(false)
 const testing = ref(false)
@@ -217,8 +219,8 @@ async function updateWebUI() {
     })
     
     // 询问是否刷新
-    setTimeout(() => {
-      if (confirm('WebUI 更新完成，是否刷新页面以应用更新？')) {
+    setTimeout(async () => {
+      if (await confirmInfo('WebUI 更新完成，是否刷新页面以应用更新？')) {
         window.location.reload()
       }
     }, 1000)

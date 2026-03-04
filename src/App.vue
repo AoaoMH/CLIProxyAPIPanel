@@ -6,6 +6,7 @@
   />
   <RouterView v-else />
   <ToastHost />
+  <ConfirmDialog />
 </template>
 
 <script setup lang="ts">
@@ -15,6 +16,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import SplashScreen from '@/components/common/SplashScreen.vue'
 import ToastHost from '@/components/common/ToastHost.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

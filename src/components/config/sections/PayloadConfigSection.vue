@@ -23,6 +23,28 @@
         />
       </div>
 
+      <!-- Default Raw Rules -->
+      <div>
+        <h4 class="text-sm font-medium text-foreground mb-3">默认规则 (Raw)</h4>
+        <p class="text-xs text-muted-foreground mb-3">当请求中未指定参数时，使用原始 JSON 字符串作为默认值</p>
+        <PayloadRulesEditor
+          :model-value="values.payloadDefaultRawRules"
+          :disabled="disabled"
+          @update:model-value="updateValue('payloadDefaultRawRules', $event)"
+        />
+      </div>
+
+      <!-- Override Raw Rules -->
+      <div>
+        <h4 class="text-sm font-medium text-foreground mb-3">覆盖规则 (Raw)</h4>
+        <p class="text-xs text-muted-foreground mb-3">强制以原始 JSON 字符串覆盖请求中的参数值</p>
+        <PayloadRulesEditor
+          :model-value="values.payloadOverrideRawRules"
+          :disabled="disabled"
+          @update:model-value="updateValue('payloadOverrideRawRules', $event)"
+        />
+      </div>
+
       <!-- Filter Rules -->
       <div>
         <h4 class="text-sm font-medium text-foreground mb-3">过滤规则</h4>
@@ -49,6 +71,8 @@ interface PayloadConfigValues {
   payloadDefaultRules: PayloadRule[]
   payloadOverrideRules: PayloadRule[]
   payloadFilterRules: PayloadFilterRule[]
+  payloadDefaultRawRules: PayloadRule[]
+  payloadOverrideRawRules: PayloadRule[]
 }
 
 interface Props {
